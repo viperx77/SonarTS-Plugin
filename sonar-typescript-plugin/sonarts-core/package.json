@@ -1,0 +1,14 @@
+{
+  "name": "sonarts-tslint-sonarts",
+  "version": "1.0.0",
+  "description": "tslint-sonarts bundle for the SonarTS-Plugin",
+  "license": "LGPL-3.0",
+  "scripts": {
+    "install-and-zip": "npm install && cd .. && mkdir -p target/classes && zip -r9 target/classes/sonarts-core.zip sonarts-core"
+  },
+  "devDependencies": {
+    "typescript": "2.3.2",
+    "tslint": "5.1.0",
+    "tslint-sonarts": "0.3.0-0"
+  }
+}
