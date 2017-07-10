@@ -127,7 +127,7 @@ public class ExternalTypescriptSensor implements Sensor {
     LOG.debug("Typescript analysis raised " + failures.length + " issues");
     FileSystem fs = sensorContext.fileSystem();
     for (Failure failure : failures) {
-      InputFile inputFile = fs.inputFile(fs.predicates().hasRelativePath(failure.name));
+      InputFile inputFile = fs.inputFile(fs.predicates().hasAbsolutePath(failure.name));
       if (inputFile != null) {
         // TODO map rules instead of using always the same rule
         RuleKey ruleKey = RuleKey.of(HardcodedRulesDefinition.REPOSITORY_KEY, failure.ruleName);

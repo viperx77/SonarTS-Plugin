@@ -29,7 +29,9 @@ public class SonarWayProfile extends ProfileDefinition {
   @Override
   public RulesProfile createProfile(ValidationMessages messages) {
     RulesProfile profile = RulesProfile.create("Sonar way", TypeScriptLanguage.KEY);
-    Rule rule = Rule.create(HardcodedRulesDefinition.REPOSITORY_KEY, "no-identical-expressions");
+    Rule rule = Rule.create(HardcodedRulesDefinition.REPOSITORY_KEY, "no-unconditional-jump");
+    profile.activateRule(rule, null);
+    rule = Rule.create(HardcodedRulesDefinition.REPOSITORY_KEY, "no-identical-expressions");
     profile.activateRule(rule, null);
     return profile;
   }

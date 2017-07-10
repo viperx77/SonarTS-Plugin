@@ -62,8 +62,7 @@ public class TypescriptPluginTest {
       .setProjectKey("SonarTS-plugin-test")
       .setProjectName("SonarTS-plugin-test")
       .setProjectVersion("1.0")
-      .setSourceDirs(".")
-      .setProperty("sonar.typescript.file.suffixes", ".ts");
+      .setSourceDirs(".");
 
     orchestrator.executeBuild(build);
   }

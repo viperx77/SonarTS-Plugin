@@ -44,7 +44,7 @@ public class ExternalTypescriptSensorTest {
 
   @Before
   public void setUp() throws Exception {
-    testBundle = new TestBundle().ruleCheck("echo", "[{startPosition:{line:0,character:5},endPosition:{line:0,character:6},name:hello.ts,ruleName:\"no-unconditional-jump\"}]").sonar("cat");
+    testBundle = new TestBundle().ruleCheck("echo", "[{startPosition:{line:0,character:5},endPosition:{line:0,character:6},name:\"" + new File(BASE_DIR, "hello.ts").getAbsolutePath() + "\",ruleName:\"no-unconditional-jump\"}]").sonar("cat");
   }
 
   @Test
