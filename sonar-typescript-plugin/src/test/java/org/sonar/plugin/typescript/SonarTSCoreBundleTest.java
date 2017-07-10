@@ -53,9 +53,7 @@ public class SonarTSCoreBundleTest {
   public void should_set_execution_rights_for_entry_points() throws Exception {
     SonarTSCoreBundle bundle = new SonarTSCoreBundle("/foo.zip", SOME_CLASS, SOME_BINARY);
     bundle.deploy(extracted.getPath());
-    PosixFilePermission[] minimumPermissions = {PosixFilePermission.OWNER_EXECUTE, PosixFilePermission.GROUP_EXECUTE, PosixFilePermission.OTHERS_EXECUTE,
-      PosixFilePermission.GROUP_READ, PosixFilePermission.GROUP_WRITE,
-      PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE};
+    PosixFilePermission[] minimumPermissions = {PosixFilePermission.OWNER_EXECUTE, PosixFilePermission.GROUP_EXECUTE, PosixFilePermission.OTHERS_EXECUTE};
     assertThat(Files.getPosixFilePermissions(getPathOf(SOME_CLASS))).contains(minimumPermissions);
     assertThat(Files.getPosixFilePermissions(getPathOf(SOME_BINARY))).contains(minimumPermissions);
   }
