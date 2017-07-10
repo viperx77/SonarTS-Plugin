@@ -56,13 +56,13 @@ public class TypescriptPluginTest {
   public static void prepare() {
     orchestrator.resetData();
 
-    final File file = FileLocation.of("test-projects/angular2-webpack-lite").getFile();
+    final File file = FileLocation.of("projects/plugin").getFile();
     SonarScanner build = createScanner()
       .setProjectDir(file)
-      .setProjectKey("AngWebpack")
-      .setProjectName("Angular2 Webpack Lite")
+      .setProjectKey("SonarTS-plugin-test")
+      .setProjectName("SonarTS-plugin-test")
       .setProjectVersion("1.0")
-      .setSourceDirs("./src")
+      .setSourceDirs(".")
       .setProperty("sonar.typescript.file.suffixes", ".ts");
 
     orchestrator.executeBuild(build);
@@ -71,8 +71,8 @@ public class TypescriptPluginTest {
   @Test
   public void should_have_loaded_issues_into_project() {
     SearchWsRequest request = new SearchWsRequest();
-    request.setProjectKeys(Collections.singletonList("AngWebpack"));
-    assertThat(newWsClient().issues().search(request).getIssuesCount()).isEqualTo(1);
+    request.setProjectKeys(Collections.singletonList("SonarTS-plugin-test"));
+    assertThat(newWsClient().issues().search(request).getIssuesCount()).isGreaterThanOrEqualTo(1);
   }
 
   public static SonarScanner createScanner() {
