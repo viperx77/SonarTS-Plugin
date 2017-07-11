@@ -19,67 +19,61 @@
  */
 package org.sonar.plugin.typescript;
 
+import com.google.gson.Gson;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import org.junit.Before;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.batch.fs.internal.DefaultInputFile;
 import org.sonar.api.batch.fs.internal.TestInputFileBuilder;
+import org.sonar.api.batch.sensor.highlighting.TypeOfText;
 import org.sonar.api.batch.sensor.internal.SensorContextTester;
 import org.sonar.api.utils.command.Command;
-import org.sonar.api.utils.log.LogTester;
+import org.sonar.plugin.typescript.ExternalTypescriptSensor.Failure;
+import org.sonar.plugin.typescript.ExternalTypescriptSensor.SonarTSResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
 
 public class ExternalTypescriptSensorTest {
 
   private static final File BASE_DIR = new File("src/test/resources");
 
-  @org.junit.Rule
-  public LogTester logTester = new LogTester();
-  private TestBundle testBundle;
+  // matters as position in file should exist
+  private static final String FILE_CONTENT = "\nfunction foo(){}";
 
-  @Before
-  public void setUp() throws Exception {
-    testBundle = new TestBundle().ruleCheck("echo", "[{startPosition:{line:0,character:5},endPosition:{line:0,character:6},name:\"" + new File(BASE_DIR, "hello.ts").getAbsolutePath() + "\",ruleName:\"no-unconditional-jump\"}]").sonar("cat");
-  }
+  @org.junit.Rule
+  public final ExpectedException thrown = ExpectedException.none();
 
   @Test
   public void should_collect_issues() throws Exception {
-    ExternalTypescriptSensor externalSensor = new ExternalTypescriptSensor(testBundle);
     SensorContextTester sensorContext = createSensorContext();
-    sensorContext.fileSystem().add(createFakeFile("class A {\n\n\n}\n"));
-    externalSensor.execute(sensorContext);
+    sensorContext.fileSystem().add(createTestInputFile());
+    Failure[] failures = new Gson()
+      .fromJson(
+        "[{startPosition:{line:1,character:5},endPosition:{line:1,character:6},name:\"" + new File(BASE_DIR, "test.ts").getAbsolutePath() + "\",ruleName:\"no-unconditional-jump\"}]",
+        Failure[].class);
+    ExternalTypescriptSensor.saveFailures(sensorContext, failures);
     assertThat(sensorContext.allIssues()).hasSize(1);
   }
 
   @Test
-  public void should_log_failed_external_process_call() throws Exception {
+  public void should_fail_when_failed_external_process_call() throws Exception {
+    thrown.expect(IllegalStateException.class);
+    thrown.expectMessage("Failed to run external process `non_existent_command arg1`");
+
     ExternalTypescriptSensor externalSensor = new ExternalTypescriptSensor(new TestBundle().ruleCheck("non_existent_command", "arg1"));
-    try {
-      externalSensor.execute(createSensorContext());
-      fail("An exception should have been raised");
-    } catch (Exception e) {
-      assertThat(logTester.logs()).contains("Failed to run external process `non_existent_command arg1`");
-    }
+    externalSensor.execute(createSensorContext());
   }
 
   @Test
   public void should_collect_highlighting() throws Exception {
-    String highlights = "{ highlights:[{\n" +
-      " startLine: 3,\n" +
-      " startCol: 17,\n" +
-      " endLine: 3,\n" +
-      " endCol: 21,\n" +
-      " textType: \"k\",\n" +
-      "}] }";
     SensorContextTester sensorContext = createSensorContext();
-    sensorContext.fileSystem().add(createFakeFile(highlights));
-    ExternalTypescriptSensor externalSensor = new ExternalTypescriptSensor(testBundle);
-    externalSensor.execute(sensorContext);
+    DefaultInputFile inputFile = createTestInputFile();
+    SonarTSResponse sonarTSResponse = new Gson().fromJson("{highlights:[{startLine:2,startCol:0,endLine:2,endCol:8,textType:\"keyword\"}]}", SonarTSResponse.class);
+    ExternalTypescriptSensor.saveHighlights(sensorContext, sonarTSResponse.highlights, inputFile);
+    assertThat(sensorContext.highlightingTypeAt(inputFile.key(), 2, 3)).containsExactly(TypeOfText.KEYWORD);
   }
 
   private SensorContextTester createSensorContext() {
@@ -88,15 +82,15 @@ public class ExternalTypescriptSensorTest {
     return sensorContext;
   }
 
-  private DefaultInputFile createFakeFile(String content) {
-    DefaultInputFile inputFile = new TestInputFileBuilder("moduleKey", "hello.ts")
+  private DefaultInputFile createTestInputFile() {
+    return new TestInputFileBuilder("moduleKey", "test.ts")
       .setModuleBaseDir(BASE_DIR.toPath())
       .setType(InputFile.Type.MAIN)
       .setLanguage(TypeScriptLanguage.KEY)
       .setCharset(StandardCharsets.UTF_8)
-      .initMetadata(content)
+      .setContents(FILE_CONTENT)
       .build();
-    return inputFile;
+
   }
 
   private class TestBundle implements ExecutableBundle {

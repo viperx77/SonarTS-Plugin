@@ -19,13 +19,15 @@
  */
 package org.sonar.plugin.typescript;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.Gson;
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import org.sonar.api.batch.fs.FilePredicate;
 import org.sonar.api.batch.fs.FileSystem;
 import org.sonar.api.batch.fs.InputFile;
@@ -77,53 +79,60 @@ public class ExternalTypescriptSensor implements Sensor {
 
   private void runMetrics(SensorContext sensorContext, String deployDestination, String projectSourcesRoot) {
     FileSystem fileSystem = sensorContext.fileSystem();
+
     FilePredicate mainFilePredicate = sensorContext.fileSystem().predicates().and(
       fileSystem.predicates().hasType(InputFile.Type.MAIN),
       fileSystem.predicates().hasLanguage(TypeScriptLanguage.KEY));
-    Iterable<InputFile> files = fileSystem.inputFiles(mainFilePredicate);
-    files.forEach(file -> {
-      Command sonarCommand = coreBundle.createSonarCommand(projectSourcesRoot, deployDestination);
-      List<String> commandComponents = decomposeToComponents(sonarCommand);
-      ProcessBuilder processBuilder = new ProcessBuilder(commandComponents);
-      processBuilder.redirectOutput(ProcessBuilder.Redirect.PIPE);
-      processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT); // TODO map to analysisError
-      processBuilder.redirectInput(ProcessBuilder.Redirect.PIPE);
-      try {
-        Process process = processBuilder.start();
-        try (PrintWriter writerToSonar = new PrintWriter(process.getOutputStream())) {
-          writerToSonar.write(new Gson().toJson(new SonarTSRequest(file.contents())));
-          writerToSonar.flush();
-          writerToSonar.close();
-        }
-        SonarTSResponse sonarTSResponse = new Gson().fromJson(new BufferedReader(new InputStreamReader(process.getInputStream())), SonarTSResponse.class);
-        saveHighlights(sensorContext, sonarTSResponse.highlights, file);
-      } catch (IOException e) {
-        LOG.error(String.format("Failed to run external process `%s`", String.join(" ", commandComponents)), e);
-      }
-    });
+
+    fileSystem.inputFiles(mainFilePredicate).forEach(file -> runMetricsForFile(sensorContext, deployDestination, projectSourcesRoot, file));
   }
 
-  private List<String> decomposeToComponents(Command sonarCommand) {
-    List<String> commandComponents = new ArrayList<String>();
-    commandComponents.add(sonarCommand.getExecutable());
-    sonarCommand.getArguments().forEach(argument -> commandComponents.add(argument));
-    return commandComponents;
-  }
-
-  private String executeExternalScript(Command command) {
+  private void runMetricsForFile(SensorContext sensorContext, String deployDestination, String projectSourcesRoot, InputFile file) {
+    Command sonarCommand = coreBundle.createSonarCommand(projectSourcesRoot, deployDestination);
+    List<String> commandComponents = decomposeToComponents(sonarCommand);
+    ProcessBuilder processBuilder = new ProcessBuilder(commandComponents);
+    processBuilder.redirectOutput(ProcessBuilder.Redirect.PIPE);
+    // TODO map to analysisError
+    processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);
+    processBuilder.redirectInput(ProcessBuilder.Redirect.PIPE);
     try {
-      CommandExecutor commandExecutor = CommandExecutor.create();
-      StringStreamConsumer stdOut = new StringStreamConsumer();
-      StreamConsumer stdErr = new StringStreamConsumer(); // TODO implement a different Consumer that maps to analysisError
-      commandExecutor.execute(command, stdOut, stdErr, 600000);
-      return stdOut.getOutput();
-    } catch (Exception e) {
-      LOG.error(String.format("Failed to run external process `%s`", command.toCommandLine()), e);
-      throw e;
+      Process process = processBuilder.start();
+      OutputStreamWriter writerToSonar = new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8);
+      String contents = file.contents();
+      writerToSonar.write(new Gson().toJson(new SonarTSRequest(contents)));
+      writerToSonar.close();
+
+      InputStreamReader inputStreamReader = new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8);
+      SonarTSResponse sonarTSResponse = new Gson().fromJson(inputStreamReader, SonarTSResponse.class);
+      saveHighlights(sensorContext, sonarTSResponse.highlights, file);
+
+    } catch (IOException e) {
+      LOG.error(String.format("Failed to run external process `%s`", String.join(" ", commandComponents)), e);
     }
   }
 
-  private void saveFailures(SensorContext sensorContext, Failure[] failures) {
+  private static List<String> decomposeToComponents(Command sonarCommand) {
+    List<String> commandComponents = new ArrayList<>();
+    commandComponents.add(sonarCommand.getExecutable());
+    sonarCommand.getArguments().forEach(commandComponents::add);
+    return commandComponents;
+  }
+
+  private static String executeExternalScript(Command command) {
+    try {
+      CommandExecutor commandExecutor = CommandExecutor.create();
+      StringStreamConsumer stdOut = new StringStreamConsumer();
+      // TODO implement a different Consumer that maps to analysisError
+      StreamConsumer stdErr = new StringStreamConsumer();
+      commandExecutor.execute(command, stdOut, stdErr, 600_000);
+      return stdOut.getOutput();
+    } catch (Exception e) {
+      throw new IllegalStateException(String.format("Failed to run external process `%s`", command.toCommandLine()), e);
+    }
+  }
+
+  @VisibleForTesting
+  protected static void saveFailures(SensorContext sensorContext, Failure[] failures) {
     LOG.debug("Typescript analysis raised " + failures.length + " issues");
     FileSystem fs = sensorContext.fileSystem();
     for (Failure failure : failures) {
@@ -141,20 +150,19 @@ public class ExternalTypescriptSensor implements Sensor {
     }
   }
 
-  private void saveHighlights(SensorContext sensorContext, Highlight[] highlights, InputFile inputFile) {
-    LOG.info("Typescript highlighted " + highlights + " tokens on file " + inputFile.relativePath());
+  @VisibleForTesting
+  protected static void saveHighlights(SensorContext sensorContext, Highlight[] highlights, InputFile inputFile) {
+    LOG.info("Syntax highlighting");
     NewHighlighting highlighting = sensorContext.newHighlighting().onFile(inputFile);
     for (Highlight highlight : highlights) {
-      LOG.info("Creating highlight " + highlight);
-      if (highlight.isEmpty())
-        continue;
       highlighting.highlight(highlight.startLine, highlight.startCol, highlight.endLine, highlight.endCol,
-        TypeOfText.forCssClass(highlight.textType));
+        TypeOfText.valueOf(highlight.textType.toUpperCase(Locale.ENGLISH)));
     }
     highlighting.save();
   }
 
-  private static class Failure {
+  @VisibleForTesting
+  protected static class Failure {
     Position startPosition;
     Position endPosition;
     String name;
@@ -166,35 +174,23 @@ public class ExternalTypescriptSensor implements Sensor {
     Integer character;
   }
 
-  private class SonarTSResponse {
+  @VisibleForTesting
+  protected static class SonarTSResponse {
     Highlight[] highlights;
   }
 
-  private class Highlight {
+  private static class Highlight {
     Integer startLine;
     Integer startCol;
     Integer endLine;
     Integer endCol;
     String textType;
-
-    @Override
-    public String toString() {
-      return startLine + ":" + startCol + "," + endLine + ":" + endCol + " " + textType;
-    }
-
-    public boolean isEmpty() {
-      if (endLine > startLine)
-        return false;
-      if (endLine == startLine && endCol > startCol)
-        return false;
-      return true;
-    }
   }
 
-  private class SonarTSRequest {
+  private static class SonarTSRequest {
     final String file_content;
 
-    public SonarTSRequest(String contents) {
+    SonarTSRequest(String contents) {
       this.file_content = contents;
     }
   }

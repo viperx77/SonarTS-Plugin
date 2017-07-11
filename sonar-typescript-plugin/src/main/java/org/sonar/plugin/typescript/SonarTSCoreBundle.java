@@ -27,8 +27,8 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.Enumeration;
-import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import org.apache.commons.io.FileUtils;
@@ -75,7 +75,8 @@ public class SonarTSCoreBundle implements ExecutableBundle {
     Command command = Command.create(runnerFolder + "/node_modules/tslint/bin/tslint");
     command.addArgument("--config").addArgument(runnerFolder + "/tslint.json");
     command.addArgument("--format").addArgument("json");
-    command.addArgument(projectSourcesRoot + "/**/*.ts"); // TODO Make file extension configurable
+    // TODO Make file extension configurable
+    command.addArgument(projectSourcesRoot + "/**/*.ts");
     return command;
   }
 
@@ -93,7 +94,7 @@ public class SonarTSCoreBundle implements ExecutableBundle {
   /*
    * A minor variant of code found here : https://stackoverflow.com/a/13912353/7672957
    */
-  private void extract(File copiedFile) throws IOException {
+  private static void extract(File copiedFile) throws IOException {
     try (ZipFile zipFile = new ZipFile(copiedFile)) {
       Enumeration<? extends ZipEntry> entries = zipFile.entries();
       while (entries.hasMoreElements()) {
@@ -119,7 +120,7 @@ public class SonarTSCoreBundle implements ExecutableBundle {
       .map(entryPoint -> new File(targetPath, entryPoint).toPath())
       .forEach(entryPoint -> {
         try {
-          Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(entryPoint);
+          EnumSet<PosixFilePermission> permissions = EnumSet.copyOf(Files.getPosixFilePermissions(entryPoint));
           permissions.add(PosixFilePermission.OWNER_EXECUTE);
           permissions.add(PosixFilePermission.GROUP_EXECUTE);
           permissions.add(PosixFilePermission.OTHERS_EXECUTE);
