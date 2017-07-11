@@ -1,0 +1,22 @@
+language: java
+sudo: false
+
+jdk:
+  - oraclejdk8
+
+install: true
+script: ./travis.sh
+env:
+  - TEST=ci
+matrix:
+  fast_finish: true
+
+cache:
+  directories:
+    - '$HOME/.m2/repository'
+before_cache:
+  - rm -rf $HOME/.m2/repository/org/sonarsource/typescript
+  - find $HOME/.m2 -name resolver-status.properties -exec rm {} \;
+
+notifications:
+  email: false
