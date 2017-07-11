@@ -36,14 +36,14 @@ public class TypeScriptPlugin implements Plugin {
       SonarWayProfile.class,
       HardcodedRulesDefinition.class,
       PropertyDefinition.builder(FILE_SUFFIXES_KEY)
-      .defaultValue(FILE_SUFFIXES_DEFVALUE)
-      .name("File Suffixes")
-      .description("Comma-separated list of suffixes for files to analyze.")
-      .subCategory("General")
-      .category("TypeScript")
-      .onQualifiers(Qualifiers.PROJECT)
-      .multiValues(true)
-      .build()
+        .defaultValue(FILE_SUFFIXES_DEFVALUE)
+        .name("File Suffixes")
+        .description("Comma-separated list of suffixes for files to analyze.")
+        .subCategory("General")
+        .category("TypeScript")
+        .onQualifiers(Qualifiers.PROJECT)
+        .multiValues(true)
+        .build()
     );
   }
 }

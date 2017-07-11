@@ -1,171 +1,172 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>org.sonarsource.parent</groupId>
-        <artifactId>parent</artifactId>
-        <version>40</version>
-    </parent>
+  <parent>
+    <groupId>org.sonarsource.parent</groupId>
+    <artifactId>parent</artifactId>
+    <version>40</version>
+  </parent>
 
-    <groupId>org.sonarsource.typescript</groupId>
-    <artifactId>typescript</artifactId>
-    <version>0.3-SNAPSHOT</version>
-    <packaging>pom</packaging>
+  <groupId>org.sonarsource.typescript</groupId>
+  <artifactId>typescript</artifactId>
+  <version>0.3-SNAPSHOT</version>
+  <packaging>pom</packaging>
 
-    <name>SonarTS</name>
-    <description>SonarQube TypeScript Analyzer</description>
-    <inceptionYear>2017</inceptionYear>
-    <organization>
-        <name>SonarSource</name>
-    </organization>
-    <licenses>
-        <license>
-            <name>GNU LGPL 3</name>
-            <url>http://www.gnu.org/licenses/lgpl.txt</url>
-            <distribution>repo</distribution>
-        </license>
-    </licenses>
+  <name>SonarTS</name>
+  <description>SonarQube TypeScript Analyzer</description>
+  <inceptionYear>2017</inceptionYear>
+  <organization>
+    <name>SonarSource</name>
+  </organization>
+  <licenses>
+    <license>
+      <name>GNU LGPL 3</name>
+      <url>http://www.gnu.org/licenses/lgpl.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
 
-    <developers>
-        <developer>
-            <id>vilchik-elena</id>
-            <name>Elena Vilchik</name>
-            <organization>SonarSource</organization>
-        </developer>
-        <developer>
-            <id>stas-vilchik</id>
-            <name>Stas Vilchik</name>
-            <organization>SonarSource</organization>
-        </developer>
-        <developer>
-            <id>inverno</id>
-            <name>Carlo Bottiglieri</name>
-            <organization>SonarSource</organization>
-        </developer>
-    </developers>
+  <developers>
+    <developer>
+      <id>vilchik-elena</id>
+      <name>Elena Vilchik</name>
+      <organization>SonarSource</organization>
+    </developer>
+    <developer>
+      <id>stas-vilchik</id>
+      <name>Stas Vilchik</name>
+      <organization>SonarSource</organization>
+    </developer>
+    <developer>
+      <id>inverno</id>
+      <name>Carlo Bottiglieri</name>
+      <organization>SonarSource</organization>
+    </developer>
+  </developers>
 
-    <modules>
-        <module>sonar-typescript-plugin</module>
-        <module>its</module>
-    </modules>
+  <modules>
+    <module>sonar-typescript-plugin</module>
+    <module>its</module>
+  </modules>
 
-    <scm>
-        <connection>scm:git:git@github.com:SonarSource/SonarTS-Plugin.git</connection>
-        <developerConnection>scm:git:git@github.com:SonarSource/SonarTS-Plugin.git</developerConnection>
-        <url>https://github.com/SonarSource/SonarTS-Plugin</url>
-        <tag>HEAD</tag>
-    </scm>
-    <issueManagement>
-        <system>GitHub</system>
-        <url>https://github.com/SonarSource/SonarTS/issues</url>
-    </issueManagement>
-    <ciManagement>
-        <system>Travis</system>
-        <url>https://travis-ci.org/SonarSource/sonar-typescript</url>
-    </ciManagement>
+  <scm>
+    <connection>scm:git:git@github.com:SonarSource/SonarTS-Plugin.git</connection>
+    <developerConnection>scm:git:git@github.com:SonarSource/SonarTS-Plugin.git</developerConnection>
+    <url>https://github.com/SonarSource/SonarTS-Plugin</url>
+    <tag>HEAD</tag>
+  </scm>
+  <issueManagement>
+    <system>GitHub</system>
+    <url>https://github.com/SonarSource/SonarTS/issues</url>
+  </issueManagement>
+  <ciManagement>
+    <system>Travis</system>
+    <url>https://travis-ci.org/SonarSource/sonar-typescript</url>
+  </ciManagement>
 
-    <properties>
-        <gitRepositoryName>SonarTS-Plugin</gitRepositoryName>
-        <license.title>SonarTS</license.title>
+  <properties>
+    <gitRepositoryName>SonarTS-Plugin</gitRepositoryName>
+    <license.title>SonarTS</license.title>
 
-        <assertj.version>3.6.2</assertj.version>
-        <junit.version>4.10</junit.version>
-        <logback.version>1.0.13</logback.version>
-        <slf4j.version>1.7.21</slf4j.version>
-        <sonar.version>6.4</sonar.version>
-        <sonar.min.version>5.6</sonar.min.version>
-        <sonar-orchestrator.version>3.13</sonar-orchestrator.version>
-        <sonarlint.version>2.5.0.36</sonarlint.version>
-        <gson.version>2.6.2</gson.version>
-        <commons-io>2.5</commons-io>
+    <assertj.version>3.6.2</assertj.version>
+    <junit.version>4.10</junit.version>
+    <logback.version>1.0.13</logback.version>
+    <slf4j.version>1.7.21</slf4j.version>
+    <sonar.version>6.4</sonar.version>
+    <sonar.min.version>5.6</sonar.min.version>
+    <sonar-orchestrator.version>3.13</sonar-orchestrator.version>
+    <sonarlint.version>2.5.0.36</sonarlint.version>
+    <gson.version>2.6.2</gson.version>
+    <commons-io>2.5</commons-io>
 
-        <artifactsToPublish>${project.groupId}:sonar-typescript-plugin:jar</artifactsToPublish>
-    </properties>
+    <artifactsToPublish>${project.groupId}:sonar-typescript-plugin:jar</artifactsToPublish>
+  </properties>
 
-    <dependencyManagement>
-        <dependencies>
-            <!-- Default dependencies (compile) -->
-            <dependency>
-                <groupId>ch.qos.logback</groupId>
-                <artifactId>logback-classic</artifactId>
-                <version>${logback.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.google.code.gson</groupId>
-                <artifactId>gson</artifactId>
-                <version>${gson.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>commons-io</groupId>
-                <artifactId>commons-io</artifactId>
-                <version>${commons-io}</version>
-            </dependency>
+  <dependencyManagement>
+    <dependencies>
+      <!-- Default dependencies (compile) -->
+      <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-classic</artifactId>
+        <version>${logback.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.code.gson</groupId>
+        <artifactId>gson</artifactId>
+        <version>${gson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-io</groupId>
+        <artifactId>commons-io</artifactId>
+        <version>${commons-io}</version>
+      </dependency>
 
-            <!-- Test dependencies -->
-            <dependency>
-                <groupId>junit</groupId>
-                <artifactId>junit</artifactId>
-                <version>${junit.version}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.assertj</groupId>
-                <artifactId>assertj-core</artifactId>
-                <version>${assertj.version}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.sonarsource.sonarqube</groupId>
-                <artifactId>sonar-testing-harness</artifactId>
-                <version>${sonar.version}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.sonarsource.sonarlint.core</groupId>
-                <artifactId>sonarlint-core</artifactId>
-                <version>${sonarlint.version}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.sonarsource.orchestrator</groupId>
-                <artifactId>sonar-orchestrator</artifactId>
-                <version>${sonar-orchestrator.version}</version>
-                <scope>test</scope>
-                <exclusions>
-                    <exclusion>
-                        <groupId>com.oracle</groupId>
-                        <artifactId>ojdbc6</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
+      <!-- Test dependencies -->
+      <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>${junit.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.assertj</groupId>
+        <artifactId>assertj-core</artifactId>
+        <version>${assertj.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.sonarsource.sonarqube</groupId>
+        <artifactId>sonar-testing-harness</artifactId>
+        <version>${sonar.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.sonarsource.sonarlint.core</groupId>
+        <artifactId>sonarlint-core</artifactId>
+        <version>${sonarlint.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.sonarsource.orchestrator</groupId>
+        <artifactId>sonar-orchestrator</artifactId>
+        <version>${sonar-orchestrator.version}</version>
+        <scope>test</scope>
+        <exclusions>
+          <exclusion>
+            <groupId>com.oracle</groupId>
+            <artifactId>ojdbc6</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
 
-            <!-- Provided dependencies -->
-            <dependency>
-                <groupId>org.sonarsource.sonarqube</groupId>
-                <artifactId>sonar-plugin-api</artifactId>
-                <version>${sonar.version}</version>
-                <scope>provided</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.sonarsource.javascript</groupId>
-                <artifactId>sonar-javascript-plugin</artifactId>
-                <type>sonar-plugin</type>
-                <version>${project.version}</version>
-                <scope>provided</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-api</artifactId>
-                <version>${slf4j.version}</version>
-                <scope>provided</scope>
-            </dependency>
+      <!-- Provided dependencies -->
+      <dependency>
+        <groupId>org.sonarsource.sonarqube</groupId>
+        <artifactId>sonar-plugin-api</artifactId>
+        <version>${sonar.version}</version>
+        <scope>provided</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.sonarsource.javascript</groupId>
+        <artifactId>sonar-javascript-plugin</artifactId>
+        <type>sonar-plugin</type>
+        <version>${project.version}</version>
+        <scope>provided</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>${slf4j.version}</version>
+        <scope>provided</scope>
+      </dependency>
 
-        </dependencies>
-    </dependencyManagement>
+    </dependencies>
+  </dependencyManagement>
 
-    <profiles>
+  <profiles>
 
-    </profiles>
+  </profiles>
 
 </project>

@@ -98,7 +98,7 @@ public class SonarTSCoreBundle implements ExecutableBundle {
       Enumeration<? extends ZipEntry> entries = zipFile.entries();
       while (entries.hasMoreElements()) {
         ZipEntry entry = entries.nextElement();
-        File entryDestination = new File(copiedFile.getParent(),  entry.getName());
+        File entryDestination = new File(copiedFile.getParent(), entry.getName());
         if (entry.isDirectory()) {
           entryDestination.mkdirs();
         } else {
