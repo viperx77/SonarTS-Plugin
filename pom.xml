@@ -48,7 +48,6 @@
 
   <modules>
     <module>sonar-typescript-plugin</module>
-    <module>its</module>
   </modules>
 
   <scm>
