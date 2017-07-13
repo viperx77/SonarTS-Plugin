@@ -3,5 +3,9 @@ function foo(x: number): boolean {
     return true;
   }
 
+  if (x < x) { // NOSONAR
+    return true;
+  }
+
   return false;
 }

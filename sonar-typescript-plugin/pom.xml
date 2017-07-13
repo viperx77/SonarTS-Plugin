@@ -60,6 +60,10 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-all</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
@@ -115,8 +119,8 @@
                         <configuration>
                             <rules>
                                 <requireFilesSize>
-                                    <minsize>8000000</minsize>
-                                    <maxsize>10000000</maxsize>
+                                    <minsize>6000000</minsize>
+                                    <maxsize>7000000</maxsize>
                                     <files>
                                         <file>${project.build.directory}/${project.build.finalName}.jar</file>
                                     </files>
