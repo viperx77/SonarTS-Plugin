@@ -20,66 +20,22 @@
 package org.sonar.plugin.typescript;
 
 import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermission;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
+import org.sonar.api.config.MapSettings;
 import org.sonar.api.utils.command.Command;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class SonarTSCoreBundleTest {
 
-  private static final String SOME_CLASS = "some.class";
-  private static final String SOME_BINARY = "folderToExtract/someBinary";
-  private File extracted;
-
-  @Before
-  public void createTargetFolder() throws Exception {
-    extracted = new File(getClass().getResource(".").getPath(), "extracted");
-    extracted.mkdir();
-  }
-
-  @Test
-  public void should_deploy_core_to_destination() throws Exception {
-    SonarTSCoreBundle bundle = new SonarTSCoreBundle("/foo.zip");
-    bundle.deploy(extracted.getPath());
-    assertThat(new File(extracted.getPath() + "/" + SOME_CLASS)).exists();
-  }
-
-  @Test
-  public void should_set_execution_rights_for_entry_points() throws Exception {
-    SonarTSCoreBundle bundle = new SonarTSCoreBundle("/foo.zip", SOME_CLASS, SOME_BINARY);
-    bundle.deploy(extracted.getPath());
-    PosixFilePermission[] minimumPermissions = {PosixFilePermission.OWNER_EXECUTE, PosixFilePermission.GROUP_EXECUTE, PosixFilePermission.OTHERS_EXECUTE};
-    assertThat(Files.getPosixFilePermissions(getPathOf(SOME_CLASS))).contains(minimumPermissions);
-    assertThat(Files.getPosixFilePermissions(getPathOf(SOME_BINARY))).contains(minimumPermissions);
-  }
-
   @Test
   public void should_create_command() throws Exception {
-    SonarTSCoreBundle bundle = new SonarTSCoreBundle("no_file");
-    Command command = bundle.createRuleCheckCommand("/project/src", "/tmp");
-    assertThat(command.toCommandLine()).contains(
-      "/tmp/sonarts-core/node_modules/tslint/bin/tslint",
-      "--config",
-      "/tmp/sonarts-core/tslint.json",
-      "--format",
-      "json",
-      "/project/src/**/*.ts"
-    );
+    SonarTSCoreBundle bundle = new SonarTSCoreBundle();
+    Command ruleCommand = bundle.createRuleCheckCommand(new File("/myProject"), new File("/deployDestination"), new MapSettings().setProperty("sonar.sources", "src1, src2"));
+    assertThat(ruleCommand.toCommandLine()).isEqualTo("/deployDestination/sonarts-core/node_modules/tslint/bin/tslint --config /deployDestination/sonarts-core/tslint.json --format json --type-check --project /myProject/tsconfig.json /myProject/src1/**/*.ts /myProject/src2/**/*.ts");
+
+    Command sonarCommand = bundle.createSonarCommand(new File("/deployDestination"));
+    assertThat(sonarCommand.toCommandLine()).isEqualTo("/deployDestination/sonarts-core/bin/sonar");
   }
 
-  // TODO Add test for already existing bundle
-
-  private Path getPathOf(String fileInBundle) {
-    return new File(extracted.getPath() + "/" + fileInBundle).toPath();
-  }
-
-  @After
-  public void deleteTargetFolder() throws Exception {
-    extracted.delete();
-  }
 }

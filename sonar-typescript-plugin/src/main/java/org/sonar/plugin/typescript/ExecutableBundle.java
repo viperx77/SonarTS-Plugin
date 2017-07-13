@@ -19,12 +19,14 @@
  */
 package org.sonar.plugin.typescript;
 
+import java.io.File;
+import org.sonar.api.config.Settings;
 import org.sonar.api.utils.command.Command;
 
 public interface ExecutableBundle {
-  void deploy(String deployDestination);
+  void deploy(File deployDestination);
 
-  Command createRuleCheckCommand(String projectSourcesRoot, String deployDestination);
+  Command createRuleCheckCommand(File projectBaseDir, File deployDestination, Settings settings);
 
-  Command createSonarCommand(String projectSourcesRoot, String deployDestination);
+  Command createSonarCommand(File deployDestination);
 }

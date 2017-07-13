@@ -33,6 +33,8 @@ public class SonarWayProfile extends ProfileDefinition {
     profile.activateRule(rule, null);
     rule = Rule.create(HardcodedRulesDefinition.REPOSITORY_KEY, "no-identical-expressions");
     profile.activateRule(rule, null);
+    rule = Rule.create(HardcodedRulesDefinition.REPOSITORY_KEY, "no-ignored-return");
+    profile.activateRule(rule, null);
     return profile;
   }
 

@@ -7,5 +7,8 @@ function foo(x: number): boolean {
     return true;
   }
 
+  var y = "str1";
+  y.concat("str2");
+
   return false;
 }

@@ -124,6 +124,13 @@ public class HardcodedRulesDefinition implements RulesDefinition {
       .setStatus(RuleStatus.READY)
       .setType(RuleType.BUG);
 
+    repository.createRule("no-ignored-return")
+      .setName("no-ignored-return")
+      .setSeverity(Severity.MAJOR)
+      .setHtmlDescription("....")
+      .setStatus(RuleStatus.READY)
+      .setType(RuleType.BUG);
+
 
     repository.done();
 

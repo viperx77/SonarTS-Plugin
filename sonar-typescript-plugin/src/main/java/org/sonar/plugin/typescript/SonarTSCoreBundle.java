@@ -25,9 +25,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
-import java.nio.file.attribute.PosixFilePermission;
-import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -35,6 +32,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.sonar.api.batch.BatchSide;
 import org.sonar.api.batch.ScannerSide;
+import org.sonar.api.config.Settings;
 import org.sonar.api.utils.command.Command;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
@@ -47,49 +45,71 @@ public class SonarTSCoreBundle implements ExecutableBundle {
 
   private static final Logger LOG = Loggers.get(SonarTSCoreBundle.class);
 
-  private final String coreFile;
-  private final String[] entryPoints;
+  // location inside jar
+  private static final String CORE_BUNDLE_NAME = "/sonarts-core.zip";
 
-  SonarTSCoreBundle(String bundleFile, String... entryPoints) {
-    this.coreFile = bundleFile;
-    this.entryPoints = entryPoints;
-  }
+  // location inside sonarts-core bundle
+  private static final String TSLINT_LOCATION = "/node_modules/tslint/bin/tslint";
+  private static final String SONAR_LOCATION = "/bin/sonar";
 
+  /**
+   * Extracting "sonarts-core.zip" (containing typescript, tslint and tslint-sonarts)
+   * to deployDestination (".sonar" directory of the analyzed project).
+   */
   @Override
-  public void deploy(String deployDestination) {
+  public void deploy(File deployDestination) {
     try {
       File copiedFile = copyTo(deployDestination);
       extract(copiedFile);
-      copiedFile.delete();
-      setEntryPointsPermissions(deployDestination);
+      Files.delete(copiedFile.toPath());
+
     } catch (Exception e) {
-      LOG.error("Failed to deploy sonarts bundle", e);
+      LOG.error("Failed to deploy SonarTS bundle", e);
     }
   }
 
+  /**
+   * Builds command to run tslint
+   */
   @Override
-  public Command createRuleCheckCommand(String projectSourcesRoot, String deployDestination) {
-    // TODO support Windows FS
-    String runnerFolder = deployDestination + "/sonarts-core";
-    // TODO consider setting permissions here on the fly instead of on-deploy
-    // TODO consider not using the tslint script but rather calling node directly
-    // node -e 'require("runnerFolder + /node_modules/tslint/lib/tslint-cli")' -- --config  .....
-    Command command = Command.create(runnerFolder + "/node_modules/tslint/bin/tslint");
-    command.addArgument("--config").addArgument(runnerFolder + "/tslint.json");
+  public Command createRuleCheckCommand(File projectBaseDir, File deployDestination, Settings settings) {
+    File sonartsCoreDir = new File(deployDestination, "sonarts-core");
+    File tslintExecutable = new File(sonartsCoreDir, TSLINT_LOCATION);
+    setExecutablePermissions(tslintExecutable);
+
+    Command command = Command.create(tslintExecutable.getAbsolutePath());
+
+    command.addArgument("--config").addArgument(new File(sonartsCoreDir, "tslint.json").getAbsolutePath());
     command.addArgument("--format").addArgument("json");
-    // TODO Make file extension configurable
-    command.addArgument(projectSourcesRoot + "/**/*.ts");
+
+    // (Lena) It might be that "tsconfig.json" location should be configurable
+    command.addArgument("--type-check")
+      .addArgument("--project")
+      .addArgument(new File(projectBaseDir, "tsconfig.json").getAbsolutePath());
+
+    String[] sourcesDirectories = settings.getStringArray("sonar.sources");
+    for (String sourcesDirectory : sourcesDirectories) {
+      command.addArgument(new File(projectBaseDir, sourcesDirectory).getAbsolutePath() + "/**/*.ts");
+    }
+
     return command;
   }
 
+  /**
+   * Builds command to run "sonar", which is making side information calculation (metrics, highlighting etc.)
+   */
   @Override
-  public Command createSonarCommand(String projectSourcesRoot, String deployDestination) {
-    return Command.create(deployDestination + "/sonarts-core/bin/sonar");
+  public Command createSonarCommand(File deployDestination) {
+    File sonartsCoreDir = new File(deployDestination, "sonarts-core");
+    File sonarExecutable = new File(sonartsCoreDir, SONAR_LOCATION);
+    setExecutablePermissions(sonarExecutable);
+
+    return Command.create(sonarExecutable.getAbsolutePath());
   }
 
-  private File copyTo(String targetPath) throws IOException {
-    File destination = new File(targetPath, coreFile);
-    FileUtils.copyInputStreamToFile(getClass().getResourceAsStream(coreFile), destination);
+  private File copyTo(File targetPath) throws IOException {
+    File destination = new File(targetPath, CORE_BUNDLE_NAME);
+    FileUtils.copyInputStreamToFile(getClass().getResourceAsStream(CORE_BUNDLE_NAME), destination);
     return destination;
   }
 
@@ -116,20 +136,10 @@ public class SonarTSCoreBundle implements ExecutableBundle {
     }
   }
 
-  private void setEntryPointsPermissions(String targetPath) {
-    // TODO Support windows permissions
-    Arrays.stream(entryPoints)
-      .map(entryPoint -> new File(targetPath, entryPoint).toPath())
-      .forEach(entryPoint -> {
-        try {
-          EnumSet<PosixFilePermission> permissions = EnumSet.copyOf(Files.getPosixFilePermissions(entryPoint));
-          permissions.add(PosixFilePermission.OWNER_EXECUTE);
-          permissions.add(PosixFilePermission.GROUP_EXECUTE);
-          permissions.add(PosixFilePermission.OTHERS_EXECUTE);
-          Files.setPosixFilePermissions(entryPoint, permissions);
-        } catch (IOException e) {
-          LOG.error("Failed to set permissions for file " + entryPoint.toString(), e);
-        }
-      });
+  private static void setExecutablePermissions(File target) {
+    if (!target.setExecutable(true, false)) {
+      // (Lena) I think we should fail instead
+      LOG.error("Failed to set permissions for file " + target.toString());
+    }
   }
 }

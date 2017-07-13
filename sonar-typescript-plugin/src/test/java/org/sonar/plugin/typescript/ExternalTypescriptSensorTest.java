@@ -31,6 +31,7 @@ import org.sonar.api.batch.fs.internal.DefaultInputFile;
 import org.sonar.api.batch.fs.internal.TestInputFileBuilder;
 import org.sonar.api.batch.sensor.highlighting.TypeOfText;
 import org.sonar.api.batch.sensor.internal.SensorContextTester;
+import org.sonar.api.config.Settings;
 import org.sonar.api.issue.NoSonarFilter;
 import org.sonar.api.measures.CoreMetrics;
 import org.sonar.api.measures.FileLinesContext;
@@ -49,7 +50,7 @@ import static org.mockito.Mockito.when;
 
 public class ExternalTypescriptSensorTest {
 
-  private static final File BASE_DIR = new File("src/test/resources");
+  private static final File BASE_DIR = new File(".");
   private FileLinesContext fileLinesContext;
   private NoSonarFilter noSonarFilter;
 
@@ -160,19 +161,19 @@ public class ExternalTypescriptSensorTest {
     }
 
     @Override
-    public void deploy(String deployDestination) {
+    public void deploy(File deployDestination) {
       // Do nothing, this test class assumes the ruleCheckCommand already exists in the machine
     }
 
     @Override
-    public Command createRuleCheckCommand(String projectSourcesRoot, String deployDestination) {
+    public Command createRuleCheckCommand(File projectBaseDir, File deployDestination, Settings settings) {
       Command command = Command.create(this.ruleCheckCommand[0]);
       command.addArguments(Arrays.copyOfRange(this.ruleCheckCommand, 1, this.ruleCheckCommand.length));
       return command;
     }
 
     @Override
-    public Command createSonarCommand(String projectSourcesRoot, String deployDestination) {
+    public Command createSonarCommand(File deployDestination) {
       Command command = Command.create(this.sonarCommand[0]);
       command.addArguments(Arrays.copyOfRange(this.sonarCommand, 1, this.sonarCommand.length));
       return command;

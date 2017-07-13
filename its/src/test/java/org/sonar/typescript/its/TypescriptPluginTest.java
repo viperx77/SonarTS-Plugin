@@ -61,7 +61,7 @@ public class TypescriptPluginTest {
   public static void prepare() {
     orchestrator.resetData();
 
-    final File file = FileLocation.of("projects/plugin").getFile();
+    final File file = FileLocation.of("projects/plugin-test-project").getFile();
     SonarScanner build = createScanner()
       .setProjectDir(file)
       .setProjectKey(PROJECT_KEY)
@@ -82,12 +82,21 @@ public class TypescriptPluginTest {
   }
 
   @Test
+  public void should_raise_issues_using_type_checker() {
+    SearchWsRequest request = new SearchWsRequest();
+    request.setProjectKeys(Collections.singletonList(PROJECT_KEY)).setRules(ImmutableList.of("typescript:no-ignored-return"));
+    List<Issue> issuesList = newWsClient().issues().search(request).getIssuesList();
+    assertThat(issuesList).hasSize(1);
+    assertThat(issuesList.get(0).getLine()).isEqualTo(11);
+  }
+
+  @Test
   public void should_save_metrics() {
     // Size
-    assertThat(getProjectMeasureAsDouble("ncloc")).isEqualTo(9);
+    assertThat(getProjectMeasureAsDouble("ncloc")).isEqualTo(11);
     assertThat(getProjectMeasureAsDouble("classes")).isEqualTo(0);
     assertThat(getProjectMeasureAsDouble("functions")).isEqualTo(1);
-    assertThat(getProjectMeasureAsDouble("statements")).isEqualTo(5);
+    assertThat(getProjectMeasureAsDouble("statements")).isEqualTo(7);
 
     // Documentation
     assertThat(getProjectMeasureAsDouble("comment_lines")).isEqualTo(1);

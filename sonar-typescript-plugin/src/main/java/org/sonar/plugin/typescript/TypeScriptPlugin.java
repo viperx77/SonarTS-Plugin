@@ -30,7 +30,7 @@ public class TypeScriptPlugin implements Plugin {
   @Override
   public void define(Context context) {
     context.addExtensions(
-      new SonarTSCoreBundle("/sonarts-core.zip", "/sonarts-core/node_modules/tslint/bin/tslint", "/sonarts-core/bin/sonar"),
+      new SonarTSCoreBundle(),
       TypeScriptLanguage.class,
       ExternalTypescriptSensor.class,
       SonarWayProfile.class,
