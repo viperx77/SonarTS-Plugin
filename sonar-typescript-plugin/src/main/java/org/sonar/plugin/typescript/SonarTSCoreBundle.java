@@ -33,12 +33,14 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.sonar.api.batch.BatchSide;
 import org.sonar.api.batch.ScannerSide;
 import org.sonar.api.utils.command.Command;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonarsource.api.sonarlint.SonarLintSide;
 
+@BatchSide
 @ScannerSide
 @SonarLintSide
 public class SonarTSCoreBundle implements ExecutableBundle {

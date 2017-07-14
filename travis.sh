@@ -1,6 +1,5 @@
 #!/bin/bash
 
-source ~/.nvm/nvm.sh && nvm install 6
 set -euo pipefail
 
 function configureTravis {

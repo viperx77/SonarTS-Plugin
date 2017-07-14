@@ -39,4 +39,75 @@
             <artifactId>assertj-core</artifactId>
         </dependency>
     </dependencies>
+
+    <profiles>
+        <profile>
+            <id>qa</id>
+            <activation>
+                <property>
+                    <name>env.SONARSOURCE_QA</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>2.10</version>
+                        <executions>
+                            <execution>
+                                <id>copy-plugin</id>
+                                <phase>generate-test-resources</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>${project.groupId}</groupId>
+                                            <artifactId>sonar-typescript-plugin</artifactId>
+                                            <version>${project.version}</version>
+                                            <type>sonar-plugin</type>
+                                            <overWrite>true</overWrite>
+                                        </artifactItem>
+                                    </artifactItems>
+                                    <outputDirectory>../sonar-typescript-plugin/target</outputDirectory>
+                                    <overWriteReleases>true</overWriteReleases>
+                                    <overWriteSnapshots>true</overWriteSnapshots>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- Need NodeJS to parse TS files -->
+                    <plugin>
+                        <groupId>com.github.eirslett</groupId>
+                        <artifactId>frontend-maven-plugin</artifactId>
+                        <version>1.4</version>
+                        <configuration>
+                            <installDirectory>${project.build.directory}</installDirectory>
+                            <nodeVersion>v8.1.2</nodeVersion>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>install</id>
+                                <phase>generate-test-resources</phase>
+                                <goals>
+                                    <goal>install-node-and-npm</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <environmentVariables>
+                                <PATH>${project.build.directory}${file.separator}node${path.separator}${env.PATH}</PATH>
+                            </environmentVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

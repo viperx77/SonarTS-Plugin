@@ -54,9 +54,6 @@ public class TypescriptPluginTest {
   private static Orchestrator createOrchestrator() {
     final OrchestratorBuilder builder = Orchestrator.builderEnv()
       .addPlugin(PLUGIN_LOCATION);
-    if (!"true".equals(System.getenv("SONARSOURCE_QA"))) {
-      builder.setSonarVersion("6.4");
-    }
     return builder.build();
   }
 
