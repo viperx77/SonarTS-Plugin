@@ -19,7 +19,6 @@
  */
 package org.sonar.plugin.typescript;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import java.io.File;
@@ -51,17 +50,22 @@ import org.sonar.api.utils.command.CommandExecutor;
 import org.sonar.api.utils.command.StringStreamConsumer;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
+import org.sonar.plugin.typescript.executable.ExecutableBundle;
+import org.sonar.plugin.typescript.executable.ExecutableBundleFactory;
 
 public class ExternalTypescriptSensor implements Sensor {
 
   private static final Logger LOG = Loggers.get(ExternalTypescriptSensor.class);
 
-  private ExecutableBundle coreBundle;
+  private ExecutableBundleFactory executableBundleFactory;
   private NoSonarFilter noSonarFilter;
   private FileLinesContextFactory fileLinesContextFactory;
 
-  public ExternalTypescriptSensor(ExecutableBundle coreBundle, NoSonarFilter noSonarFilter, FileLinesContextFactory fileLinesContextFactory) {
-    this.coreBundle = coreBundle;
+  /**
+   * ExecutableBundleFactory is injected for testability purposes
+   */
+  public ExternalTypescriptSensor(ExecutableBundleFactory executableBundleFactory, NoSonarFilter noSonarFilter, FileLinesContextFactory fileLinesContextFactory) {
+    this.executableBundleFactory = executableBundleFactory;
     this.noSonarFilter = noSonarFilter;
     this.fileLinesContextFactory = fileLinesContextFactory;
   }
@@ -74,22 +78,23 @@ public class ExternalTypescriptSensor implements Sensor {
   @Override
   public void execute(SensorContext sensorContext) {
     File deployDestination = sensorContext.fileSystem().workDir();
-    coreBundle.deploy(deployDestination);
+    ExecutableBundle executableBundle = executableBundleFactory.createAndDeploy(deployDestination);
+
     File projectBaseDir = sensorContext.fileSystem().baseDir();
     LOG.info("Metrics calculation");
-    runMetrics(sensorContext, deployDestination);
+    runMetrics(sensorContext, executableBundle);
     LOG.info("Rules execution");
-    Failure[] failures = runRules(deployDestination, projectBaseDir, sensorContext.settings());
+    Failure[] failures = runRules(executableBundle, projectBaseDir, sensorContext.settings());
     saveFailures(sensorContext, failures);
   }
 
-  private Failure[] runRules(File deployDestination, File projectBaseDir, Settings settings) {
-    Command command = coreBundle.createRuleCheckCommand(projectBaseDir, deployDestination, settings);
-    String rulesOutput = executeExternalScript(command);
+  private Failure[] runRules(ExecutableBundle executableBundle, File projectBaseDir, Settings settings) {
+    Command command = executableBundle.getTslintCommand(projectBaseDir, settings);
+    String rulesOutput = executeCommand(command);
     return new Gson().fromJson(rulesOutput, Failure[].class);
   }
 
-  private void runMetrics(SensorContext sensorContext, File deployDestination) {
+  private void runMetrics(SensorContext sensorContext, ExecutableBundle executableBundle) {
     FileSystem fileSystem = sensorContext.fileSystem();
 
     FilePredicate mainFilePredicate = sensorContext.fileSystem().predicates().and(
@@ -98,11 +103,12 @@ public class ExternalTypescriptSensor implements Sensor {
 
     InputFileContentExtractor contentExtractor = new InputFileContentExtractor(sensorContext);
 
-    fileSystem.inputFiles(mainFilePredicate).forEach(file -> runMetricsForFile(sensorContext, deployDestination, file, contentExtractor));
+    fileSystem.inputFiles(mainFilePredicate).forEach(file -> runMetricsForFile(sensorContext, executableBundle, file, contentExtractor));
   }
 
-  private void runMetricsForFile(SensorContext sensorContext, File deployDestination, InputFile file, InputFileContentExtractor contentExtractor) {
-    Command sonarCommand = coreBundle.createSonarCommand(deployDestination);
+
+  private void runMetricsForFile(SensorContext sensorContext, ExecutableBundle executableBundle, InputFile file, InputFileContentExtractor contentExtractor) {
+    Command sonarCommand = executableBundle.getTsMetricsCommand();
     List<String> commandComponents = decomposeToComponents(sonarCommand);
     ProcessBuilder processBuilder = new ProcessBuilder(commandComponents);
     processBuilder.redirectOutput(ProcessBuilder.Redirect.PIPE);
@@ -128,8 +134,7 @@ public class ExternalTypescriptSensor implements Sensor {
     }
   }
 
-  @VisibleForTesting
-  protected void saveMetrics(SensorContext sensorContext, SonarTSResponse sonarTSResponse, InputFile inputFile) {
+  private void saveMetrics(SensorContext sensorContext, SonarTSResponse sonarTSResponse, InputFile inputFile) {
     saveMetric(sensorContext, inputFile, CoreMetrics.FUNCTIONS, sonarTSResponse.functions);
     saveMetric(sensorContext, inputFile, CoreMetrics.CLASSES, sonarTSResponse.classes);
     saveMetric(sensorContext, inputFile, CoreMetrics.STATEMENTS, sonarTSResponse.statements);
@@ -161,7 +166,7 @@ public class ExternalTypescriptSensor implements Sensor {
     return commandComponents;
   }
 
-  private static String executeExternalScript(Command command) {
+  private static String executeCommand(Command command) {
     try {
       CommandExecutor commandExecutor = CommandExecutor.create();
       StringStreamConsumer stdOut = new StringStreamConsumer();
@@ -172,12 +177,15 @@ public class ExternalTypescriptSensor implements Sensor {
       }
       return stdOut.getOutput();
     } catch (Exception e) {
-      throw new IllegalStateException(String.format("Failed to run external process `%s`", command.toCommandLine()), e);
+      throw new IllegalStateException(failedMessage(command.toCommandLine()), e);
     }
   }
 
-  @VisibleForTesting
-  protected void saveFailures(SensorContext sensorContext, Failure[] failures) {
+  private static String failedMessage(String command) {
+    return String.format("Failed to run external process `%s`", command);
+  }
+
+  private void saveFailures(SensorContext sensorContext, Failure[] failures) {
     LOG.debug("Typescript analysis raised " + failures.length + " issues");
     FileSystem fs = sensorContext.fileSystem();
     for (Failure failure : failures) {
@@ -195,8 +203,7 @@ public class ExternalTypescriptSensor implements Sensor {
     }
   }
 
-  @VisibleForTesting
-  protected void saveHighlights(SensorContext sensorContext, Highlight[] highlights, InputFile inputFile) {
+  private void saveHighlights(SensorContext sensorContext, Highlight[] highlights, InputFile inputFile) {
     NewHighlighting highlighting = sensorContext.newHighlighting().onFile(inputFile);
     for (Highlight highlight : highlights) {
       highlighting.highlight(highlight.startLine, highlight.startCol, highlight.endLine, highlight.endCol,
@@ -205,8 +212,7 @@ public class ExternalTypescriptSensor implements Sensor {
     highlighting.save();
   }
 
-  @VisibleForTesting
-  protected static class Failure {
+  private static class Failure {
     Position startPosition;
     Position endPosition;
     String name;
@@ -218,8 +224,7 @@ public class ExternalTypescriptSensor implements Sensor {
     Integer character;
   }
 
-  @VisibleForTesting
-  protected static class SonarTSResponse {
+  private static class SonarTSResponse {
     Highlight[] highlights;
     int[] ncloc;
     int[] commentLines;

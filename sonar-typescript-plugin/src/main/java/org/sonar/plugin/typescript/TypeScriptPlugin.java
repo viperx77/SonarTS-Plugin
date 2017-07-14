@@ -22,6 +22,7 @@ package org.sonar.plugin.typescript;
 import org.sonar.api.Plugin;
 import org.sonar.api.config.PropertyDefinition;
 import org.sonar.api.resources.Qualifiers;
+import org.sonar.plugin.typescript.executable.SonarTSCoreBundleFactory;
 
 public class TypeScriptPlugin implements Plugin {
   static final String FILE_SUFFIXES_KEY = "sonar.typescript.file.suffixes";
@@ -30,7 +31,7 @@ public class TypeScriptPlugin implements Plugin {
   @Override
   public void define(Context context) {
     context.addExtensions(
-      new SonarTSCoreBundle(),
+      new SonarTSCoreBundleFactory(/* absolute location inside jar */ "/sonarts-core.zip"),
       TypeScriptLanguage.class,
       ExternalTypescriptSensor.class,
       SonarWayProfile.class,

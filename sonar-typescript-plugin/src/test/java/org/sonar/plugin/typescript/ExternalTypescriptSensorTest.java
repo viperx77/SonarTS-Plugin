@@ -20,16 +20,18 @@
 package org.sonar.plugin.typescript;
 
 import com.google.common.collect.Sets;
-import com.google.gson.Gson;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.sonar.api.batch.fs.InputFile;
+import org.sonar.api.batch.fs.InputFile.Type;
 import org.sonar.api.batch.fs.internal.DefaultInputFile;
 import org.sonar.api.batch.fs.internal.TestInputFileBuilder;
 import org.sonar.api.batch.sensor.highlighting.TypeOfText;
+import org.sonar.api.batch.sensor.internal.DefaultSensorDescriptor;
 import org.sonar.api.batch.sensor.internal.SensorContextTester;
 import org.sonar.api.config.Settings;
 import org.sonar.api.issue.NoSonarFilter;
@@ -37,8 +39,9 @@ import org.sonar.api.measures.CoreMetrics;
 import org.sonar.api.measures.FileLinesContext;
 import org.sonar.api.measures.FileLinesContextFactory;
 import org.sonar.api.utils.command.Command;
-import org.sonar.plugin.typescript.ExternalTypescriptSensor.Failure;
-import org.sonar.plugin.typescript.ExternalTypescriptSensor.SonarTSResponse;
+import org.sonar.api.utils.log.LogTester;
+import org.sonar.plugin.typescript.executable.ExecutableBundle;
+import org.sonar.plugin.typescript.executable.ExecutableBundleFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Matchers.any;
@@ -54,51 +57,39 @@ public class ExternalTypescriptSensorTest {
   private FileLinesContext fileLinesContext;
   private NoSonarFilter noSonarFilter;
 
-  // matters as position in file should exist
   private static final String FILE_CONTENT = "\nfunction foo(){}";
 
-  @org.junit.Rule
+  @Rule
   public final ExpectedException thrown = ExpectedException.none();
 
+  @Rule
+  public final LogTester logTester = new LogTester();
+
   @Test
-  public void should_collect_issues() throws Exception {
+  public void should_have_description() throws Exception {
+    ExternalTypescriptSensor sensor = createSensor();
+    DefaultSensorDescriptor sensorDescriptor = new DefaultSensorDescriptor();
+    sensor.describe(sensorDescriptor);
+    assertThat(sensorDescriptor.name()).isEqualTo("TypeScript Sensor");
+    assertThat(sensorDescriptor.languages()).containsOnly("ts");
+    assertThat(sensorDescriptor.type()).isEqualTo(Type.MAIN);
+  }
+
+  @Test
+  public void should_run_processes_and_save_data() throws Exception {
+    String issuesJson = "[{startPosition:{line:1,character:5},endPosition:{line:1,character:6},name:\"" + new File(BASE_DIR, "test.ts").getAbsolutePath() + "\",ruleName:\"no-unconditional-jump\"}]";
+    ExternalTypescriptSensor sensor = createSensor(new TestBundleFactory().tsMetrics("src/test/resources/tsMetrics.sh").tslint("echo", issuesJson));
+
     SensorContextTester sensorContext = createSensorContext();
-    sensorContext.fileSystem().add(createTestInputFile());
-    Failure[] failures = new Gson()
-      .fromJson(
-        "[{startPosition:{line:1,character:5},endPosition:{line:1,character:6},name:\"" + new File(BASE_DIR, "test.ts").getAbsolutePath() + "\",ruleName:\"no-unconditional-jump\"}]",
-        Failure[].class);
-    createSensor().saveFailures(sensorContext, failures);
+    DefaultInputFile testInputFile = createTestInputFile(sensorContext);
+    sensor.execute(sensorContext);
+
     assertThat(sensorContext.allIssues()).hasSize(1);
-  }
 
-  @Test
-  public void should_fail_when_failed_external_process_call() throws Exception {
-    thrown.expect(IllegalStateException.class);
-    thrown.expectMessage("Failed to run external process `non_existent_command arg1`");
+    assertThat(sensorContext.highlightingTypeAt(testInputFile.key(), 2, 3)).containsExactly(TypeOfText.KEYWORD);
 
-    TestBundle testBundle = new TestBundle().ruleCheck("non_existent_command", "arg1");
-    createSensor(testBundle).execute(createSensorContext());
-  }
-
-  @Test
-  public void should_save_highlighting() throws Exception {
-    SensorContextTester sensorContext = createSensorContext();
-    DefaultInputFile inputFile = createTestInputFile();
-    SonarTSResponse sonarTSResponse = new Gson().fromJson("{highlights:[{startLine:2,startCol:0,endLine:2,endCol:8,textType:\"keyword\"}]}", SonarTSResponse.class);
-    createSensor().saveHighlights(sensorContext, sonarTSResponse.highlights, inputFile);
-    assertThat(sensorContext.highlightingTypeAt(inputFile.key(), 2, 3)).containsExactly(TypeOfText.KEYWORD);
-  }
-
-  @Test
-  public void should_save_measures() throws Exception {
-    SensorContextTester sensorContext = createSensorContext();
-    DefaultInputFile inputFile = createTestInputFile();
-    SonarTSResponse sonarTSResponse = new Gson().fromJson("{ncloc:[55, 77, 99], commentLines:[24, 42], nosonarLines:[24], statements:100, functions:10, classes:1}", SonarTSResponse.class);
-    createSensor().saveMetrics(sensorContext, sonarTSResponse, inputFile);
-
-    assertThat(sensorContext.measure(inputFile.key(), CoreMetrics.NCLOC).value()).isEqualTo(3);
-    assertThat(sensorContext.measure(inputFile.key(), CoreMetrics.COMMENT_LINES).value()).isEqualTo(2);
+    assertThat(sensorContext.measure(testInputFile.key(), CoreMetrics.NCLOC).value()).isEqualTo(3);
+    assertThat(sensorContext.measure(testInputFile.key(), CoreMetrics.COMMENT_LINES).value()).isEqualTo(2);
 
     verify(fileLinesContext).setIntValue(CoreMetrics.NCLOC_DATA_KEY, 55, 1);
     verify(fileLinesContext).setIntValue(CoreMetrics.NCLOC_DATA_KEY, 77, 1);
@@ -108,11 +99,56 @@ public class ExternalTypescriptSensorTest {
     verify(fileLinesContext).save();
     verifyNoMoreInteractions(fileLinesContext);
 
-    verify(noSonarFilter).noSonarInFile(eq(inputFile), eq(Sets.newHashSet(24)));
+    verify(noSonarFilter).noSonarInFile(eq(testInputFile), eq(Sets.newHashSet(24)));
 
-    assertThat(sensorContext.measure(inputFile.key(), CoreMetrics.STATEMENTS).value()).isEqualTo(100);
-    assertThat(sensorContext.measure(inputFile.key(), CoreMetrics.FUNCTIONS).value()).isEqualTo(10);
-    assertThat(sensorContext.measure(inputFile.key(), CoreMetrics.CLASSES).value()).isEqualTo(1);
+    assertThat(sensorContext.measure(testInputFile.key(), CoreMetrics.STATEMENTS).value()).isEqualTo(100);
+    assertThat(sensorContext.measure(testInputFile.key(), CoreMetrics.FUNCTIONS).value()).isEqualTo(10);
+    assertThat(sensorContext.measure(testInputFile.key(), CoreMetrics.CLASSES).value()).isEqualTo(1);
+  }
+
+  @Test
+  public void should_fail_when_failed_tslint_process() throws Exception {
+    TestBundleFactory testBundle = new TestBundleFactory().tslint("non_existent_command", "arg1");
+
+    thrown.expect(IllegalStateException.class);
+    thrown.expectMessage("Failed to run external process `non_existent_command arg1`");
+
+    // fails even without single file in project as command run once per command
+    // as there is no files, tsMetrics is not executed
+    createSensor(testBundle).execute(createSensorContext());
+  }
+
+  @Test
+  public void should_log_when_failed_ts_metrics_process() throws Exception {
+    TestBundleFactory testBundle = new TestBundleFactory().tsMetrics("non_existent_command", "arg1").tslint("echo", "[]");
+    SensorContextTester sensorContext = createSensorContext();
+    // fails only with at least one file as command run one per file
+    DefaultInputFile testInputFile = createTestInputFile(sensorContext);
+    createSensor(testBundle).execute(sensorContext);
+
+    assertThat(logTester.logs()).contains("Failed to run external process `non_existent_command arg1` for file " + testInputFile.absolutePath());
+  }
+
+  @Test
+  public void should_do_nothing_when_tslint_report_with_not_existing_file() throws Exception {
+    String issuesJson = "[{startPosition:{line:1,character:5},endPosition:{line:1,character:6},name:\"" + new File(BASE_DIR, "not_exists.ts").getAbsolutePath() + "\",ruleName:\"no-unconditional-jump\"}]";
+    ExternalTypescriptSensor sensor = createSensor(new TestBundleFactory().tsMetrics("src/test/resources/tsMetrics.sh").tslint("echo", issuesJson));
+    SensorContextTester sensorContext = createSensorContext();
+    sensor.execute(sensorContext);
+    assertThat(sensorContext.allIssues()).hasSize(0);
+  }
+
+  @Test
+  public void should_fail_when_stdErr_tslint_is_not_empty() throws Exception {
+    TestBundleFactory testBundle = new TestBundleFactory().tslint("cat", "not_existing_file");
+
+    thrown.expect(IllegalStateException.class);
+    thrown.expectMessage("Failed to run external process `cat not_existing_file`");
+    // it would be nice to assert thrown.expectCause (available since jUnit 4.11)
+
+    // fails even without single file in project as command run once per command
+    // as there is no files, tsMetrics is not executed
+    createSensor(testBundle).execute(createSensorContext());
   }
 
   private SensorContextTester createSensorContext() {
@@ -122,61 +158,66 @@ public class ExternalTypescriptSensorTest {
   }
 
   private ExternalTypescriptSensor createSensor() {
-    return createSensor(new TestBundle());
+    return createSensor(new TestBundleFactory());
   }
 
-  private ExternalTypescriptSensor createSensor(ExecutableBundle executableBundle) {
+  private ExternalTypescriptSensor createSensor(ExecutableBundleFactory executableBundleFactory) {
     FileLinesContextFactory fileLinesContextFactory = mock(FileLinesContextFactory.class);
     fileLinesContext = mock(FileLinesContext.class);
     when(fileLinesContextFactory.createFor(any(InputFile.class))).thenReturn(fileLinesContext);
 
     noSonarFilter = mock(NoSonarFilter.class);
-    return new ExternalTypescriptSensor(executableBundle, noSonarFilter, fileLinesContextFactory);
+    return new ExternalTypescriptSensor(executableBundleFactory, noSonarFilter, fileLinesContextFactory);
   }
 
-  private DefaultInputFile createTestInputFile() {
-    return new TestInputFileBuilder("moduleKey", "test.ts")
+  private DefaultInputFile createTestInputFile(SensorContextTester sensorContext) {
+    DefaultInputFile testInputFile = new TestInputFileBuilder("moduleKey", "test.ts")
       .setModuleBaseDir(BASE_DIR.toPath())
-      .setType(InputFile.Type.MAIN)
+      .setType(Type.MAIN)
       .setLanguage(TypeScriptLanguage.KEY)
       .setCharset(StandardCharsets.UTF_8)
       .setContents(FILE_CONTENT)
       .build();
 
+    sensorContext.fileSystem().add(testInputFile);
+    return testInputFile;
   }
 
-  private class TestBundle implements ExecutableBundle {
+  private static class TestBundleFactory implements ExecutableBundleFactory {
 
     private String[] ruleCheckCommand;
     private String[] sonarCommand;
 
-    private TestBundle ruleCheck(String... ruleCheckCommmand) {
+    public TestBundleFactory tslint(String... ruleCheckCommmand) {
       this.ruleCheckCommand = ruleCheckCommmand;
       return this;
     }
 
-    private TestBundle sonar(String... sonarCommand) {
+    public TestBundleFactory tsMetrics(String... sonarCommand) {
       this.sonarCommand = sonarCommand;
       return this;
     }
 
     @Override
-    public void deploy(File deployDestination) {
-      // Do nothing, this test class assumes the ruleCheckCommand already exists in the machine
+    public ExecutableBundle createAndDeploy(File deployDestination) {
+      return new TestBundle();
     }
 
-    @Override
-    public Command createRuleCheckCommand(File projectBaseDir, File deployDestination, Settings settings) {
-      Command command = Command.create(this.ruleCheckCommand[0]);
-      command.addArguments(Arrays.copyOfRange(this.ruleCheckCommand, 1, this.ruleCheckCommand.length));
-      return command;
-    }
+    private class TestBundle implements ExecutableBundle {
 
-    @Override
-    public Command createSonarCommand(File deployDestination) {
-      Command command = Command.create(this.sonarCommand[0]);
-      command.addArguments(Arrays.copyOfRange(this.sonarCommand, 1, this.sonarCommand.length));
-      return command;
+      @Override
+      public Command getTslintCommand(File projectBaseDir, Settings settings) {
+        Command command = Command.create(ruleCheckCommand[0]);
+        command.addArguments(Arrays.copyOfRange(ruleCheckCommand, 1, ruleCheckCommand.length));
+        return command;
+      }
+
+      @Override
+      public Command getTsMetricsCommand() {
+        Command command = Command.create(sonarCommand[0]);
+        command.addArguments(Arrays.copyOfRange(sonarCommand, 1, sonarCommand.length));
+        return command;
+      }
     }
   }
 }
