@@ -8,7 +8,7 @@ TEST:
 SQ_VERSION:
   - DEV
   - LATEST_RELEASE
-#  - LTS
+  - LTS
 
 # nothing to exclude
 

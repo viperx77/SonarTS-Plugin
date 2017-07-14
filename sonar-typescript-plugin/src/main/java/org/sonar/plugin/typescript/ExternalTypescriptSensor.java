@@ -96,10 +96,11 @@ public class ExternalTypescriptSensor implements Sensor {
       fileSystem.predicates().hasType(InputFile.Type.MAIN),
       fileSystem.predicates().hasLanguage(TypeScriptLanguage.KEY));
 
-    fileSystem.inputFiles(mainFilePredicate).forEach(file -> runMetricsForFile(sensorContext, deployDestination, projectSourcesRoot, file));
+    InputFileContentExtractor contentExtractor = new InputFileContentExtractor(sensorContext);
+    fileSystem.inputFiles(mainFilePredicate).forEach(file -> runMetricsForFile(sensorContext, deployDestination, projectSourcesRoot, file, contentExtractor));
   }
 
-  private void runMetricsForFile(SensorContext sensorContext, String deployDestination, String projectSourcesRoot, InputFile file) {
+  private void runMetricsForFile(SensorContext sensorContext, String deployDestination, String projectSourcesRoot, InputFile file, InputFileContentExtractor contentExtractor) {
     Command sonarCommand = coreBundle.createSonarCommand(projectSourcesRoot, deployDestination);
     List<String> commandComponents = decomposeToComponents(sonarCommand);
     ProcessBuilder processBuilder = new ProcessBuilder(commandComponents);
@@ -110,8 +111,9 @@ public class ExternalTypescriptSensor implements Sensor {
     try {
       Process process = processBuilder.start();
       OutputStreamWriter writerToSonar = new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8);
-      String contents = file.contents();
-      writerToSonar.write(new Gson().toJson(new SonarTSRequest(contents)));
+      String contents = contentExtractor.content(file);
+      SonarTSRequest requestToSonar = new SonarTSRequest(contents);
+      writerToSonar.write(new Gson().toJson(requestToSonar));
       writerToSonar.close();
 
       InputStreamReader inputStreamReader = new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8);
