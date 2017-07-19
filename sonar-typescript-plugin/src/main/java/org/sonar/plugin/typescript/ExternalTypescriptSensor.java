@@ -52,6 +52,7 @@ import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonar.plugin.typescript.executable.ExecutableBundle;
 import org.sonar.plugin.typescript.executable.ExecutableBundleFactory;
+import org.sonarsource.plugin.commons.InputFileContentExtractor;
 
 public class ExternalTypescriptSensor implements Sensor {
 
