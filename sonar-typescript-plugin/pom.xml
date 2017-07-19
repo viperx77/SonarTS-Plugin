@@ -139,6 +139,7 @@
                     <workingDirectory>sonarts-core</workingDirectory>
                     <installDirectory>target</installDirectory>
                     <nodeVersion>v8.1.2</nodeVersion>
+                    <npmVersion>5.3.0</npmVersion>
                 </configuration>
                 <executions>
                     <execution>
@@ -152,9 +153,28 @@
                         <goals>
                             <goal>npm</goal>
                         </goals>
-                        <configuration>
-                            <arguments>run install-and-zip</arguments>
-                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.0.0</version>
+                <configuration>
+                    <descriptors>
+                        <descriptor>src/sonarts-assembly.xml</descriptor>
+                    </descriptors>
+                    <outputDirectory>target/classes</outputDirectory>
+                    <finalName>sonarts-core</finalName>
+                    <appendAssemblyId>false</appendAssemblyId>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
