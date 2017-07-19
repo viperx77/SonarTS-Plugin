@@ -21,20 +21,26 @@ package org.sonar.plugin.typescript;
 
 import org.sonar.api.profiles.ProfileDefinition;
 import org.sonar.api.profiles.RulesProfile;
-import org.sonar.api.rules.Rule;
+import org.sonar.api.rules.RuleFinder;
 import org.sonar.api.utils.ValidationMessages;
+import org.sonarsource.plugin.commons.ProfileDefinitionReader;
 
 public class SonarWayProfile extends ProfileDefinition {
 
+  public static final String PROFILE_NAME = "Sonar way";
+
+  private static final String PROFILE_PATH = "org/sonar/l10n/typescript/rules/typescript/Sonar_way_profile.json";
+  private final RuleFinder ruleFinder;
+
+  public SonarWayProfile(RuleFinder ruleFinder) {
+    this.ruleFinder = ruleFinder;
+  }
+
   @Override
-  public RulesProfile createProfile(ValidationMessages messages) {
-    RulesProfile profile = RulesProfile.create("Sonar way", TypeScriptLanguage.KEY);
-    Rule rule = Rule.create(HardcodedRulesDefinition.REPOSITORY_KEY, "no-unconditional-jump");
-    profile.activateRule(rule, null);
-    rule = Rule.create(HardcodedRulesDefinition.REPOSITORY_KEY, "no-identical-expressions");
-    profile.activateRule(rule, null);
-    rule = Rule.create(HardcodedRulesDefinition.REPOSITORY_KEY, "no-ignored-return");
-    profile.activateRule(rule, null);
+  public RulesProfile createProfile(ValidationMessages validation) {
+    RulesProfile profile = RulesProfile.create(PROFILE_NAME, TypeScriptLanguage.KEY);
+    ProfileDefinitionReader definitionReader = new ProfileDefinitionReader(ruleFinder);
+    definitionReader.activateRules(profile, TypeScriptRulesDefinition.REPOSITORY_KEY, PROFILE_PATH);
     return profile;
   }
 

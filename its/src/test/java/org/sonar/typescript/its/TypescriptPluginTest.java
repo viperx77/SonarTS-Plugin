@@ -20,62 +20,44 @@
 package org.sonar.typescript.its;
 
 import com.google.common.collect.ImmutableList;
-import com.sonar.orchestrator.Orchestrator;
-import com.sonar.orchestrator.OrchestratorBuilder;
 import com.sonar.orchestrator.build.SonarScanner;
 import com.sonar.orchestrator.locator.FileLocation;
-import java.io.File;
 import java.util.Collections;
 import java.util.List;
 import org.junit.BeforeClass;
-import org.junit.ClassRule;
 import org.junit.Test;
 import org.sonarqube.ws.Issues.Issue;
 import org.sonarqube.ws.WsMeasures;
 import org.sonarqube.ws.WsMeasures.Measure;
-import org.sonarqube.ws.client.HttpConnector;
-import org.sonarqube.ws.client.WsClient;
-import org.sonarqube.ws.client.WsClientFactories;
 import org.sonarqube.ws.client.issue.SearchWsRequest;
 import org.sonarqube.ws.client.measure.ComponentWsRequest;
 
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.sonar.typescript.its.Tests.newWsClient;
 
 public class TypescriptPluginTest {
 
-  private static final FileLocation PLUGIN_LOCATION = FileLocation.byWildcardMavenFilename(
-    new File("../sonar-typescript-plugin/target"), "sonar-typescript-plugin-*.jar");
-
-  @ClassRule
-  public static Orchestrator orchestrator = createOrchestrator();
   private static String PROJECT_KEY = "SonarTS-plugin-test";
-
-  private static Orchestrator createOrchestrator() {
-    final OrchestratorBuilder builder = Orchestrator.builderEnv()
-      .addPlugin(PLUGIN_LOCATION);
-    return builder.build();
-  }
 
   @BeforeClass
   public static void prepare() {
-    orchestrator.resetData();
+    Tests.ORCHESTRATOR.resetData();
 
-    final File file = FileLocation.of("projects/plugin-test-project").getFile();
     SonarScanner build = createScanner()
-      .setProjectDir(file)
+      .setProjectDir(FileLocation.of("projects/plugin-test-project").getFile())
       .setProjectKey(PROJECT_KEY)
       .setProjectName(PROJECT_KEY)
       .setProjectVersion("1.0")
       .setSourceDirs(".");
 
-    orchestrator.executeBuild(build);
+    Tests.ORCHESTRATOR.executeBuild(build);
   }
 
   @Test
   public void should_have_loaded_issues_into_project_and_ignore_issue_with_nosonar() {
     SearchWsRequest request = new SearchWsRequest();
-    request.setProjectKeys(Collections.singletonList(PROJECT_KEY)).setRules(ImmutableList.of("typescript:no-identical-expressions"));
+    request.setProjectKeys(Collections.singletonList(PROJECT_KEY)).setRules(ImmutableList.of("typescript:S1764"));
     List<Issue> issuesList = newWsClient().issues().search(request).getIssuesList();
     assertThat(issuesList).hasSize(1);
     assertThat(issuesList.get(0).getLine()).isEqualTo(2);
@@ -84,7 +66,7 @@ public class TypescriptPluginTest {
   @Test
   public void should_raise_issues_using_type_checker() {
     SearchWsRequest request = new SearchWsRequest();
-    request.setProjectKeys(Collections.singletonList(PROJECT_KEY)).setRules(ImmutableList.of("typescript:no-ignored-return"));
+    request.setProjectKeys(Collections.singletonList(PROJECT_KEY)).setRules(ImmutableList.of("typescript:S2201"));
     List<Issue> issuesList = newWsClient().issues().search(request).getIssuesList();
     assertThat(issuesList).hasSize(1);
     assertThat(issuesList.get(0).getLine()).isEqualTo(11);
@@ -129,12 +111,6 @@ public class TypescriptPluginTest {
     SonarScanner scanner = SonarScanner.create();
     scanner.setSourceEncoding("UTF-8");
     return scanner;
-  }
-
-  private static WsClient newWsClient() {
-    return WsClientFactories.getDefault().newClient(HttpConnector.newBuilder()
-      .url(orchestrator.getServer().getUrl())
-      .build());
   }
 
 }
