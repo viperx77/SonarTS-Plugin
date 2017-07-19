@@ -3,6 +3,7 @@
 # Possible values for SLAVE: "performance" (for perf tests) and "linux" (for linux machines connected to DB services)
 
 TEST:
+  - ci
   - plugin
 
 SQ_VERSION:
@@ -10,9 +11,12 @@ SQ_VERSION:
   - LATEST_RELEASE
   - LTS
 
-# nothing to exclude
-
-# exclude:
-#  - TEST: plugin
-#    SLAVE: linux
-#    SQ_VERSION: LATEST_RELEASE
+exclude:
+# exclude CI on linux, because it was already done on travis
+  - TEST: ci
+    SLAVE: linux
+# limit Windows CI and plugin tests only to LATEST_RELEASE
+  - SLAVE: windows
+    SQ_VERSION: DEV
+  - SLAVE: windows
+    SQ_VERSION: LTS
