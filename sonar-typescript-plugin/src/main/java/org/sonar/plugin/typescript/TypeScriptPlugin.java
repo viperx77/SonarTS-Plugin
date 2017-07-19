@@ -35,7 +35,7 @@ public class TypeScriptPlugin implements Plugin {
       TypeScriptLanguage.class,
       ExternalTypescriptSensor.class,
       SonarWayProfile.class,
-      HardcodedRulesDefinition.class,
+      TypeScriptRulesDefinition.class,
       PropertyDefinition.builder(FILE_SUFFIXES_KEY)
         .defaultValue(FILE_SUFFIXES_DEFVALUE)
         .name("File Suffixes")

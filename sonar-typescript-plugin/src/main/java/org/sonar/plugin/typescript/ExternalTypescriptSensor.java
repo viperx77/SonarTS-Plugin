@@ -192,8 +192,8 @@ public class ExternalTypescriptSensor implements Sensor {
     for (Failure failure : failures) {
       InputFile inputFile = fs.inputFile(fs.predicates().hasAbsolutePath(failure.name));
       if (inputFile != null) {
-        // TODO map rules instead of using always the same rule
-        RuleKey ruleKey = RuleKey.of(HardcodedRulesDefinition.REPOSITORY_KEY, failure.ruleName);
+        String key = TypeScriptRulesDefinition.TSLINT_TO_SONAR_KEY.get(failure.ruleName);
+        RuleKey ruleKey = RuleKey.of(TypeScriptRulesDefinition.REPOSITORY_KEY, key);
         NewIssue issue = sensorContext.newIssue().forRule(ruleKey);
         NewIssueLocation location = issue.newLocation();
         location.on(inputFile);
