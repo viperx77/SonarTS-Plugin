@@ -21,8 +21,11 @@ package org.sonar.plugin.typescript;
 
 import com.google.common.collect.Sets;
 import java.io.File;
+import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -51,9 +54,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+/**
+ *
+ */
 public class ExternalTypescriptSensorTest {
 
   private static final File BASE_DIR = new File(".");
+  private static String node;
+
   private FileLinesContext fileLinesContext;
   private NoSonarFilter noSonarFilter;
 
@@ -64,6 +72,21 @@ public class ExternalTypescriptSensorTest {
 
   @Rule
   public final LogTester logTester = new LogTester();
+
+  /**
+   * First try 'node' from frontend-maven-plugin, fallback to 'node' from the path
+   */
+  @BeforeClass
+  public static void setUp() throws Exception {
+    try {
+      String nodeFromMavenPlugin = "target/node/node";
+      Runtime.getRuntime().exec(nodeFromMavenPlugin);
+      node = nodeFromMavenPlugin;
+
+    } catch (IOException e) {
+      node = "node";
+    }
+  }
 
   @Test
   public void should_have_description() throws Exception {
@@ -77,11 +100,12 @@ public class ExternalTypescriptSensorTest {
 
   @Test
   public void should_run_processes_and_save_data() throws Exception {
-    String issuesJson = "[{startPosition:{line:1,character:5},endPosition:{line:1,character:6},name:\"" + new File(BASE_DIR, "test.ts").getAbsolutePath() + "\",ruleName:\"no-unconditional-jump\"}]";
-    ExternalTypescriptSensor sensor = createSensor(new TestBundleFactory().tsMetrics("src/test/resources/tsMetrics.sh").tslint("echo", issuesJson));
-
     SensorContextTester sensorContext = createSensorContext();
     DefaultInputFile testInputFile = createTestInputFile(sensorContext);
+
+    ExternalTypescriptSensor sensor = createSensor(new TestBundleFactory().tsMetrics(node, resourceScript("/mockTsMetrics.js"))
+      .tslint(node, resourceScript("/mockTsLint.js"), testInputFile.absolutePath()));
+
     sensor.execute(sensorContext);
 
     assertThat(sensorContext.allIssues()).hasSize(1);
@@ -106,6 +130,10 @@ public class ExternalTypescriptSensorTest {
     assertThat(sensorContext.measure(testInputFile.key(), CoreMetrics.CLASSES).value()).isEqualTo(1);
   }
 
+  private String resourceScript(String script) throws URISyntaxException {
+    return new File(getClass().getResource(script).toURI()).getAbsolutePath();
+  }
+
   @Test
   public void should_fail_when_failed_tslint_process() throws Exception {
     TestBundleFactory testBundle = new TestBundleFactory().tslint("non_existent_command", "arg1");
@@ -120,7 +148,7 @@ public class ExternalTypescriptSensorTest {
 
   @Test
   public void should_log_when_failed_ts_metrics_process() throws Exception {
-    TestBundleFactory testBundle = new TestBundleFactory().tsMetrics("non_existent_command", "arg1").tslint("echo", "[]");
+    TestBundleFactory testBundle = new TestBundleFactory().tsMetrics("non_existent_command", "arg1").tslint(node, "-e", "console.log('[]');");
     SensorContextTester sensorContext = createSensorContext();
     // fails only with at least one file as command run one per file
     DefaultInputFile testInputFile = createTestInputFile(sensorContext);
@@ -131,8 +159,8 @@ public class ExternalTypescriptSensorTest {
 
   @Test
   public void should_do_nothing_when_tslint_report_with_not_existing_file() throws Exception {
-    String issuesJson = "[{startPosition:{line:1,character:5},endPosition:{line:1,character:6},name:\"" + new File(BASE_DIR, "not_exists.ts").getAbsolutePath() + "\",ruleName:\"no-unconditional-jump\"}]";
-    ExternalTypescriptSensor sensor = createSensor(new TestBundleFactory().tsMetrics("src/test/resources/tsMetrics.sh").tslint("echo", issuesJson));
+    String testFile = new File(BASE_DIR, "not_exists.ts").getAbsolutePath();
+    ExternalTypescriptSensor sensor = createSensor(new TestBundleFactory().tsMetrics(node, resourceScript("/mockTsMetrics.js")).tslint(node, resourceScript("/mockTsLint.js"), testFile));
     SensorContextTester sensorContext = createSensorContext();
     sensor.execute(sensorContext);
     assertThat(sensorContext.allIssues()).hasSize(0);

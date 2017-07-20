@@ -50,35 +50,22 @@ public class SonarTSCoreBundleTest {
   @Test
   public void should_create_command() throws Exception {
     ExecutableBundle bundle = new SonarTSCoreBundleFactory("/testBundle.zip").createAndDeploy(DEPLOY_DESTINATION);
-    Command ruleCommand = bundle.getTslintCommand(new File("/myProject"), new MapSettings().setProperty("sonar.sources", "src1, src2"));
+    File projectBaseDir = new File("/myProject");
+    Command ruleCommand = bundle.getTslintCommand(projectBaseDir, new MapSettings().setProperty("sonar.sources", "src1, src2"));
 
 
     String tslint = new File(DEPLOY_DESTINATION, "sonarts-core/node_modules/tslint/bin/tslint").getAbsolutePath();
     String config = new File(DEPLOY_DESTINATION, "sonarts-core/tslint.json").getAbsolutePath();
 
-    assertThat(ruleCommand.toCommandLine()).isEqualTo(tslint + " --config " + config + " --format json --type-check --project /myProject/tsconfig.json /myProject/src1/**/*.ts /myProject/src2/**/*.ts");
+    assertThat(ruleCommand.toCommandLine()).isEqualTo("node " + tslint + " --config " + config + " --format json --type-check --project "
+      + projectBaseDir.getAbsolutePath() + File.separator + "tsconfig.json "
+      + projectBaseDir.getAbsolutePath() + File.separator + "src1/**/*.ts "
+      + projectBaseDir.getAbsolutePath() + File.separator + "src2/**/*.ts");
 
     Command sonarCommand = bundle.getTsMetricsCommand();
-    assertThat(sonarCommand.toCommandLine()).isEqualTo(new File(DEPLOY_DESTINATION, "sonarts-core/bin/sonar").getAbsolutePath());
+    assertThat(sonarCommand.toCommandLine()).isEqualTo("node " + new File(DEPLOY_DESTINATION, "sonarts-core/node_modules/tslint-sonarts/bin/tsmetrics").getAbsolutePath());
   }
 
-  /**
-   * testBundle.zip contains some valid copy of sonarts-core.zip
-   * both tslint and tsMetrics executables in this testBundle.zip don't have executable rights.
-   */
-  @Test
-  public void should_set_executable_rights() throws Exception {
-    new SonarTSCoreBundleFactory("/testBundle.zip").createAndDeploy(DEPLOY_DESTINATION);
-
-    File tslintExecutable = new File(DEPLOY_DESTINATION, "sonarts-core/node_modules/tslint/bin/tslint");
-    File tsMetricsExecutable = new File(DEPLOY_DESTINATION, "sonarts-core/bin/sonar");
-
-    // TODO (Lena)
-    // If we create test zip on the fly during the test we could assert that the files are not executable before.
-    // That way this test will be more reliable.
-    assertThat(tslintExecutable.canExecute()).isTrue();
-    assertThat(tsMetricsExecutable.canExecute()).isTrue();
-  }
 
   @Test
   public void should_fail_when_bad_zip() throws Exception {
@@ -87,11 +74,4 @@ public class SonarTSCoreBundleTest {
     new SonarTSCoreBundleFactory("/badZip.zip").createAndDeploy(DEPLOY_DESTINATION);
   }
 
-  @Test
-  public void should_fail_when_fail_to_set_executable_permissions() throws Exception {
-    expectedException.expect(IllegalStateException.class);
-    expectedException.expectMessage("Failed to set permissions for file");
-    expectedException.expectMessage("node_modules/tslint/bin/tslint");
-    new SonarTSCoreBundleFactory("/empty.zip").createAndDeploy(DEPLOY_DESTINATION);
-  }
 }

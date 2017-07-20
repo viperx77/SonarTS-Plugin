@@ -37,7 +37,7 @@ public class SonarTSCoreBundle implements ExecutableBundle {
 
   // relative location inside sonarts-core bundle
   private static final String TSLINT_LOCATION = "node_modules/tslint/bin/tslint";
-  private static final String SONAR_LOCATION = "bin/sonar";
+  private static final String SONAR_LOCATION = "node_modules/tslint-sonarts/bin/tsmetrics";
 
   private File deployDestination;
   private String bundleLocation;
@@ -58,9 +58,6 @@ public class SonarTSCoreBundle implements ExecutableBundle {
   static SonarTSCoreBundle createAndDeploy(String bundleLocation, File deployDestination) {
     SonarTSCoreBundle sonarTSCoreBundle = new SonarTSCoreBundle(bundleLocation, deployDestination);
     sonarTSCoreBundle.deploy();
-
-    setExecutablePermissions(sonarTSCoreBundle.tslintExecutable);
-    setExecutablePermissions(sonarTSCoreBundle.tsMetricsExecutable);
 
     return sonarTSCoreBundle;
   }
@@ -87,8 +84,8 @@ public class SonarTSCoreBundle implements ExecutableBundle {
   public Command getTslintCommand(File projectBaseDir, Settings settings) {
     File sonartsCoreDir = new File(deployDestination, "sonarts-core");
 
-    Command command = Command.create(tslintExecutable.getAbsolutePath());
-
+    Command command = Command.create("node");
+    command.addArgument(tslintExecutable.getAbsolutePath());
     command.addArgument("--config").addArgument(new File(sonartsCoreDir, "tslint.json").getAbsolutePath());
     command.addArgument("--format").addArgument("json");
 
@@ -110,7 +107,9 @@ public class SonarTSCoreBundle implements ExecutableBundle {
    */
   @Override
   public Command getTsMetricsCommand() {
-    return Command.create(this.tsMetricsExecutable.getAbsolutePath());
+    Command command = Command.create("node");
+    command.addArgument(this.tsMetricsExecutable.getAbsolutePath());
+    return command;
   }
 
   private File copyTo(File targetPath) throws IOException {
@@ -142,9 +141,4 @@ public class SonarTSCoreBundle implements ExecutableBundle {
     }
   }
 
-  private static void setExecutablePermissions(File target) {
-    if (!target.setExecutable(true, false)) {
-      throw new IllegalStateException("Failed to set permissions for file " + target.toString());
-    }
-  }
 }
