@@ -26,6 +26,7 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import org.junit.BeforeClass;
+import java.util.List;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -43,6 +44,7 @@ import org.sonar.api.measures.FileLinesContext;
 import org.sonar.api.measures.FileLinesContextFactory;
 import org.sonar.api.utils.command.Command;
 import org.sonar.api.utils.log.LogTester;
+import org.sonar.duplications.internal.pmd.TokensLine;
 import org.sonar.plugin.typescript.executable.ExecutableBundle;
 import org.sonar.plugin.typescript.executable.ExecutableBundleFactory;
 
@@ -128,6 +130,11 @@ public class ExternalTypescriptSensorTest {
     assertThat(sensorContext.measure(testInputFile.key(), CoreMetrics.STATEMENTS).value()).isEqualTo(100);
     assertThat(sensorContext.measure(testInputFile.key(), CoreMetrics.FUNCTIONS).value()).isEqualTo(10);
     assertThat(sensorContext.measure(testInputFile.key(), CoreMetrics.CLASSES).value()).isEqualTo(1);
+
+    List<TokensLine> cpd = sensorContext.cpdTokens(testInputFile.key());
+    assertThat(cpd).hasSize(1);
+    assertThat(cpd.get(0).getStartLine()).isEqualTo(2);
+    assertThat(cpd.get(0).getValue()).isEqualTo("foobar");
   }
 
   private String resourceScript(String script) throws URISyntaxException {

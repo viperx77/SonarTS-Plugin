@@ -22,17 +22,24 @@ package org.sonar.typescript.its;
 import com.sonar.orchestrator.Orchestrator;
 import com.sonar.orchestrator.locator.FileLocation;
 import java.io.File;
+import java.util.List;
 import org.junit.ClassRule;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
+import org.sonarqube.ws.WsMeasures;
+import org.sonarqube.ws.WsMeasures.Measure;
 import org.sonarqube.ws.client.HttpConnector;
 import org.sonarqube.ws.client.WsClient;
 import org.sonarqube.ws.client.WsClientFactories;
+import org.sonarqube.ws.client.measure.ComponentWsRequest;
+
+import static java.util.Collections.singletonList;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
   TypescriptPluginTest.class,
-  ProfileTest.class
+  ProfileTest.class,
+  CpdTest.class
 })
 public class Tests {
 
@@ -49,6 +56,19 @@ public class Tests {
     return WsClientFactories.getDefault().newClient(HttpConnector.newBuilder()
       .url(ORCHESTRATOR.getServer().getUrl())
       .build());
+  }
+
+  public static Double getProjectMeasureAsDouble(String metricKey, String projectKey) {
+    Measure measure = getMeasure(metricKey, projectKey);
+    return (measure == null) ? null : Double.parseDouble(measure.getValue());
+  }
+
+  private static Measure getMeasure(String metricKey, String projectKey) {
+    WsMeasures.ComponentWsResponse response = newWsClient().measures().component(new ComponentWsRequest()
+      .setComponentKey(projectKey)
+      .setMetricKeys(singletonList(metricKey)));
+    List<Measure> measures = response.getComponent().getMeasuresList();
+    return measures.size() == 1 ? measures.get(0) : null;
   }
 
 }

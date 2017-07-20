@@ -20,19 +20,17 @@
 package org.sonar.typescript.its;
 
 import com.google.common.collect.ImmutableList;
+import com.sonar.orchestrator.Orchestrator;
 import com.sonar.orchestrator.build.SonarScanner;
 import com.sonar.orchestrator.locator.FileLocation;
 import java.util.Collections;
 import java.util.List;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.sonarqube.ws.Issues.Issue;
-import org.sonarqube.ws.WsMeasures;
-import org.sonarqube.ws.WsMeasures.Measure;
 import org.sonarqube.ws.client.issue.SearchWsRequest;
-import org.sonarqube.ws.client.measure.ComponentWsRequest;
 
-import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.sonar.typescript.its.Tests.newWsClient;
 
@@ -40,9 +38,12 @@ public class TypescriptPluginTest {
 
   private static String PROJECT_KEY = "SonarTS-plugin-test";
 
+  @ClassRule
+  public static Orchestrator orchestrator = Tests.ORCHESTRATOR;
+
   @BeforeClass
   public static void prepare() {
-    Tests.ORCHESTRATOR.resetData();
+    orchestrator.resetData();
 
     SonarScanner build = createScanner()
       .setProjectDir(FileLocation.of("projects/plugin-test-project").getFile())
@@ -51,7 +52,7 @@ public class TypescriptPluginTest {
       .setProjectVersion("1.0")
       .setSourceDirs(".");
 
-    Tests.ORCHESTRATOR.executeBuild(build);
+    orchestrator.executeBuild(build);
   }
 
   @Test
@@ -94,17 +95,8 @@ public class TypescriptPluginTest {
     assertThat(getProjectMeasureAsDouble("coverage")).isNull();
   }
 
-  private Double getProjectMeasureAsDouble(String metricKey) {
-    Measure measure = getMeasure(metricKey);
-    return (measure == null) ? null : Double.parseDouble(measure.getValue());
-  }
-
-  private Measure getMeasure(String metricKey) {
-    WsMeasures.ComponentWsResponse response = newWsClient().measures().component(new ComponentWsRequest()
-      .setComponentKey(PROJECT_KEY)
-      .setMetricKeys(singletonList(metricKey)));
-    List<Measure> measures = response.getComponent().getMeasuresList();
-    return measures.size() == 1 ? measures.get(0) : null;
+  private Double getProjectMeasureAsDouble(String metric) {
+    return Tests.getProjectMeasureAsDouble(metric, PROJECT_KEY);
   }
 
   private static SonarScanner createScanner() {

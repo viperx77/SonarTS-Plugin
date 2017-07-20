@@ -34,6 +34,7 @@ import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.batch.sensor.Sensor;
 import org.sonar.api.batch.sensor.SensorContext;
 import org.sonar.api.batch.sensor.SensorDescriptor;
+import org.sonar.api.batch.sensor.cpd.NewCpdTokens;
 import org.sonar.api.batch.sensor.highlighting.NewHighlighting;
 import org.sonar.api.batch.sensor.highlighting.TypeOfText;
 import org.sonar.api.batch.sensor.issue.NewIssue;
@@ -116,6 +117,8 @@ public class ExternalTypescriptSensor implements Sensor {
     // TODO map to analysisError
     processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);
     processBuilder.redirectInput(ProcessBuilder.Redirect.PIPE);
+
+    InputStreamReader inputStreamReader;
     try {
       Process process = processBuilder.start();
       OutputStreamWriter writerToSonar = new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8);
@@ -124,15 +127,26 @@ public class ExternalTypescriptSensor implements Sensor {
       writerToSonar.write(new Gson().toJson(requestToSonar));
       writerToSonar.close();
 
-      InputStreamReader inputStreamReader = new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8);
-      SonarTSResponse sonarTSResponse = new Gson().fromJson(inputStreamReader, SonarTSResponse.class);
-
-      saveHighlights(sensorContext, sonarTSResponse.highlights, file);
-      saveMetrics(sensorContext, sonarTSResponse, file);
+      inputStreamReader = new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8);
 
     } catch (Exception e) {
       LOG.error(String.format("Failed to run external process `%s` for file %s", String.join(" ", commandComponents), file.absolutePath()), e);
+      return;
     }
+
+    SonarTSResponse sonarTSResponse = new Gson().fromJson(inputStreamReader, SonarTSResponse.class);
+    saveHighlights(sensorContext, sonarTSResponse.highlights, file);
+    saveMetrics(sensorContext, sonarTSResponse, file);
+    saveCpd(sensorContext, sonarTSResponse.cpdTokens, file);
+  }
+
+  private void saveCpd(SensorContext sensorContext, CpdToken[] cpdTokens, InputFile file) {
+    NewCpdTokens newCpdTokens = sensorContext.newCpdTokens().onFile(file);
+    for (CpdToken cpdToken : cpdTokens) {
+      newCpdTokens.addToken(cpdToken.startLine, cpdToken.startCol, cpdToken.endLine, cpdToken.endCol, cpdToken.image);
+    }
+
+    newCpdTokens.save();
   }
 
   private void saveMetrics(SensorContext sensorContext, SonarTSResponse sonarTSResponse, InputFile inputFile) {
@@ -227,6 +241,7 @@ public class ExternalTypescriptSensor implements Sensor {
 
   private static class SonarTSResponse {
     Highlight[] highlights;
+    CpdToken[] cpdTokens;
     int[] ncloc;
     int[] commentLines;
     Integer[] nosonarLines;
@@ -241,6 +256,14 @@ public class ExternalTypescriptSensor implements Sensor {
     Integer endLine;
     Integer endCol;
     String textType;
+  }
+
+  private static class CpdToken {
+    Integer startLine;
+    Integer startCol;
+    Integer endLine;
+    Integer endCol;
+    String image;
   }
 
   private static class SonarTSRequest {
