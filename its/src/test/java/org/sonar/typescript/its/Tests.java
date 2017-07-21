@@ -38,8 +38,9 @@ import static java.util.Collections.singletonList;
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
   TypescriptPluginTest.class,
-  ProfileTest.class,
-  CpdTest.class
+  CpdTest.class,
+  TsxTest.class,
+  ProfileTest.class
 })
 public class Tests {
 

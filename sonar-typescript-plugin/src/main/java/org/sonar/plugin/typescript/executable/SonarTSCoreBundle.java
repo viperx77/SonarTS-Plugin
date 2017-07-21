@@ -30,7 +30,6 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.sonar.api.config.Settings;
 import org.sonar.api.utils.command.Command;
 
 public class SonarTSCoreBundle implements ExecutableBundle {
@@ -81,7 +80,7 @@ public class SonarTSCoreBundle implements ExecutableBundle {
    * Builds command to run tslint
    */
   @Override
-  public Command getTslintCommand(File projectBaseDir, Settings settings) {
+  public Command getTslintCommand(File projectBaseDir) {
     File sonartsCoreDir = new File(deployDestination, "sonarts-core");
 
     Command command = Command.create("node");
@@ -93,11 +92,6 @@ public class SonarTSCoreBundle implements ExecutableBundle {
     command.addArgument("--type-check")
       .addArgument("--project")
       .addArgument(new File(projectBaseDir, "tsconfig.json").getAbsolutePath());
-
-    String[] sourcesDirectories = settings.getStringArray("sonar.sources");
-    for (String sourcesDirectory : sourcesDirectories) {
-      command.addArgument(new File(projectBaseDir, sourcesDirectory).getAbsolutePath() + "/**/*.ts");
-    }
 
     return command;
   }

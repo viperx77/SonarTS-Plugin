@@ -39,7 +39,6 @@ import org.sonar.api.batch.sensor.highlighting.NewHighlighting;
 import org.sonar.api.batch.sensor.highlighting.TypeOfText;
 import org.sonar.api.batch.sensor.issue.NewIssue;
 import org.sonar.api.batch.sensor.issue.NewIssueLocation;
-import org.sonar.api.config.Settings;
 import org.sonar.api.issue.NoSonarFilter;
 import org.sonar.api.measures.CoreMetrics;
 import org.sonar.api.measures.FileLinesContext;
@@ -86,12 +85,12 @@ public class ExternalTypescriptSensor implements Sensor {
     LOG.info("Metrics calculation");
     runMetrics(sensorContext, executableBundle);
     LOG.info("Rules execution");
-    Failure[] failures = runRules(executableBundle, projectBaseDir, sensorContext.settings());
+    Failure[] failures = runRules(executableBundle, projectBaseDir);
     saveFailures(sensorContext, failures);
   }
 
-  private Failure[] runRules(ExecutableBundle executableBundle, File projectBaseDir, Settings settings) {
-    Command command = executableBundle.getTslintCommand(projectBaseDir, settings);
+  private Failure[] runRules(ExecutableBundle executableBundle, File projectBaseDir) {
+    Command command = executableBundle.getTslintCommand(projectBaseDir);
     String rulesOutput = executeCommand(command);
     return new Gson().fromJson(rulesOutput, Failure[].class);
   }
@@ -123,7 +122,7 @@ public class ExternalTypescriptSensor implements Sensor {
       Process process = processBuilder.start();
       OutputStreamWriter writerToSonar = new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8);
       String contents = contentExtractor.content(file);
-      SonarTSRequest requestToSonar = new SonarTSRequest(contents);
+      SonarTSRequest requestToSonar = new SonarTSRequest(contents, file.absolutePath());
       writerToSonar.write(new Gson().toJson(requestToSonar));
       writerToSonar.close();
 
@@ -268,9 +267,11 @@ public class ExternalTypescriptSensor implements Sensor {
 
   private static class SonarTSRequest {
     final String fileContent;
+    final String filepath;
 
-    SonarTSRequest(String contents) {
+    SonarTSRequest(String contents, String filepath) {
       this.fileContent = contents;
+      this.filepath = filepath;
     }
   }
 }

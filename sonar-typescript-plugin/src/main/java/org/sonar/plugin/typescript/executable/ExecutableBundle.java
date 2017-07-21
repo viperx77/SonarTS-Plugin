@@ -20,12 +20,11 @@
 package org.sonar.plugin.typescript.executable;
 
 import java.io.File;
-import org.sonar.api.config.Settings;
 import org.sonar.api.utils.command.Command;
 
 public interface ExecutableBundle {
 
-  Command getTslintCommand(File projectBaseDir, Settings settings);
+  Command getTslintCommand(File projectBaseDir);
 
   Command getTsMetricsCommand();
 }

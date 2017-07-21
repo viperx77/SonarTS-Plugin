@@ -25,7 +25,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
-import org.sonar.api.config.MapSettings;
 import org.sonar.api.utils.command.Command;
 import org.sonar.plugin.typescript.executable.ExecutableBundle;
 import org.sonar.plugin.typescript.executable.SonarTSCoreBundleFactory;
@@ -51,16 +50,14 @@ public class SonarTSCoreBundleTest {
   public void should_create_command() throws Exception {
     ExecutableBundle bundle = new SonarTSCoreBundleFactory("/testBundle.zip").createAndDeploy(DEPLOY_DESTINATION);
     File projectBaseDir = new File("/myProject");
-    Command ruleCommand = bundle.getTslintCommand(projectBaseDir, new MapSettings().setProperty("sonar.sources", "src1, src2"));
+    Command ruleCommand = bundle.getTslintCommand(projectBaseDir);
 
 
     String tslint = new File(DEPLOY_DESTINATION, "sonarts-core/node_modules/tslint/bin/tslint").getAbsolutePath();
     String config = new File(DEPLOY_DESTINATION, "sonarts-core/tslint.json").getAbsolutePath();
 
     assertThat(ruleCommand.toCommandLine()).isEqualTo("node " + tslint + " --config " + config + " --format json --type-check --project "
-      + projectBaseDir.getAbsolutePath() + File.separator + "tsconfig.json "
-      + projectBaseDir.getAbsolutePath() + File.separator + "src1/**/*.ts "
-      + projectBaseDir.getAbsolutePath() + File.separator + "src2/**/*.ts");
+      + projectBaseDir.getAbsolutePath() + File.separator + "tsconfig.json");
 
     Command sonarCommand = bundle.getTsMetricsCommand();
     assertThat(sonarCommand.toCommandLine()).isEqualTo("node " + new File(DEPLOY_DESTINATION, "sonarts-core/node_modules/tslint-sonarts/bin/tsmetrics").getAbsolutePath());
