@@ -23,7 +23,7 @@ import org.sonar.api.profiles.ProfileDefinition;
 import org.sonar.api.profiles.RulesProfile;
 import org.sonar.api.rules.RuleFinder;
 import org.sonar.api.utils.ValidationMessages;
-import org.sonarsource.plugin.commons.ProfileDefinitionReader;
+import org.sonarsource.analyzer.commons.ProfileDefinitionReader;
 
 public class SonarWayProfile extends ProfileDefinition {
 

@@ -21,7 +21,7 @@ package org.sonar.plugin.typescript;
 
 import com.google.common.collect.ImmutableMap;
 import org.sonar.api.server.rule.RulesDefinition;
-import org.sonarsource.plugin.commons.RuleMetadataLoader;
+import org.sonarsource.analyzer.commons.RuleMetadataLoader;
 
 public class TypeScriptRulesDefinition implements RulesDefinition {
 
