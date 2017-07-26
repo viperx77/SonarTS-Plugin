@@ -26,6 +26,7 @@ import org.sonar.api.server.rule.RulesDefinition;
 import org.sonar.api.server.rule.RulesDefinition.Param;
 import org.sonar.api.server.rule.RulesDefinition.Repository;
 import org.sonar.api.server.rule.RulesDefinition.Rule;
+import org.sonar.plugin.typescript.rules.TypeScriptRules;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -37,7 +38,7 @@ public class TypeScriptRulesDefinitionTest {
 
     assertThat(repository.name()).isEqualTo("SonarAnalyzer");
     assertThat(repository.language()).isEqualTo("ts");
-    assertThat(repository.rules()).hasSize(TypeScriptRulesDefinition.TSLINT_TO_SONAR_KEY.size());
+    assertThat(repository.rules()).hasSize(TypeScriptRules.TSLINT_TO_SONAR_KEY.size());
 
     assertRuleProperties(repository);
     assertAllRuleParametersHaveDescription(repository);

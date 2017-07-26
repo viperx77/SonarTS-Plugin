@@ -31,6 +31,7 @@ import java.util.Locale;
 import org.sonar.api.batch.fs.FilePredicate;
 import org.sonar.api.batch.fs.FileSystem;
 import org.sonar.api.batch.fs.InputFile;
+import org.sonar.api.batch.rule.CheckFactory;
 import org.sonar.api.batch.sensor.Sensor;
 import org.sonar.api.batch.sensor.SensorContext;
 import org.sonar.api.batch.sensor.SensorDescriptor;
@@ -52,11 +53,13 @@ import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonar.plugin.typescript.executable.ExecutableBundle;
 import org.sonar.plugin.typescript.executable.ExecutableBundleFactory;
+import org.sonar.plugin.typescript.rules.TypeScriptRules;
 import org.sonarsource.analyzer.commons.InputFileContentExtractor;
 
 public class ExternalTypescriptSensor implements Sensor {
 
   private static final Logger LOG = Loggers.get(ExternalTypescriptSensor.class);
+  private final CheckFactory checkFactory;
 
   private ExecutableBundleFactory executableBundleFactory;
   private NoSonarFilter noSonarFilter;
@@ -65,10 +68,12 @@ public class ExternalTypescriptSensor implements Sensor {
   /**
    * ExecutableBundleFactory is injected for testability purposes
    */
-  public ExternalTypescriptSensor(ExecutableBundleFactory executableBundleFactory, NoSonarFilter noSonarFilter, FileLinesContextFactory fileLinesContextFactory) {
+  public ExternalTypescriptSensor(ExecutableBundleFactory executableBundleFactory, NoSonarFilter noSonarFilter, FileLinesContextFactory fileLinesContextFactory,
+    CheckFactory checkFactory) {
     this.executableBundleFactory = executableBundleFactory;
     this.noSonarFilter = noSonarFilter;
     this.fileLinesContextFactory = fileLinesContextFactory;
+    this.checkFactory = checkFactory;
   }
 
   @Override
@@ -84,10 +89,12 @@ public class ExternalTypescriptSensor implements Sensor {
     File projectBaseDir = sensorContext.fileSystem().baseDir();
     LOG.info("Metrics calculation");
     runMetrics(sensorContext, executableBundle);
+    executableBundle.activateRules(new TypeScriptRules(sensorContext.activeRules(), checkFactory));
     LOG.info("Rules execution");
     Failure[] failures = runRules(executableBundle, projectBaseDir);
     saveFailures(sensorContext, failures);
   }
+
 
   private Failure[] runRules(ExecutableBundle executableBundle, File projectBaseDir) {
     Command command = executableBundle.getTslintCommand(projectBaseDir);
@@ -205,11 +212,11 @@ public class ExternalTypescriptSensor implements Sensor {
     for (Failure failure : failures) {
       InputFile inputFile = fs.inputFile(fs.predicates().hasAbsolutePath(failure.name));
       if (inputFile != null) {
-        String key = TypeScriptRulesDefinition.TSLINT_TO_SONAR_KEY.get(failure.ruleName);
-        RuleKey ruleKey = RuleKey.of(TypeScriptRulesDefinition.REPOSITORY_KEY, key);
+        RuleKey ruleKey = TypeScriptRules.ruleKeyFromTsLintKey(failure.ruleName);
         NewIssue issue = sensorContext.newIssue().forRule(ruleKey);
         NewIssueLocation location = issue.newLocation();
         location.on(inputFile);
+        location.message(failure.failure);
         location.at(inputFile.newRange(failure.startPosition.line + 1, failure.startPosition.character, failure.endPosition.line + 1, failure.endPosition.character));
         issue.at(location);
         issue.save();
@@ -227,6 +234,7 @@ public class ExternalTypescriptSensor implements Sensor {
   }
 
   private static class Failure {
+    String failure;
     Position startPosition;
     Position endPosition;
     String name;

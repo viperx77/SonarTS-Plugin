@@ -17,17 +17,19 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonar.plugin.typescript.executable;
+package org.sonar.plugin.typescript.rules;
 
-import java.io.File;
-import org.sonar.api.utils.command.Command;
-import org.sonar.plugin.typescript.rules.TypeScriptRules;
 
-public interface ExecutableBundle {
+import com.google.gson.Gson;
+import org.junit.Test;
 
-  Command getTslintCommand(File projectBaseDir);
+import static org.assertj.core.api.Assertions.assertThat;
 
-  Command getTsMetricsCommand();
+public class NoMagicNumbersTest {
 
-  void activateRules(TypeScriptRules typeScriptRules);
+  @Test
+  public void configuration() throws Exception {
+    String configuration = new Gson().toJson(new NoMagicNumbers().configuration());
+    assertThat(configuration).isEqualTo("[true,1,0,-1]");
+  }
 }

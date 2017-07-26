@@ -25,8 +25,8 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import org.junit.BeforeClass;
 import java.util.List;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -34,6 +34,8 @@ import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.batch.fs.InputFile.Type;
 import org.sonar.api.batch.fs.internal.DefaultInputFile;
 import org.sonar.api.batch.fs.internal.TestInputFileBuilder;
+import org.sonar.api.batch.rule.ActiveRules;
+import org.sonar.api.batch.rule.CheckFactory;
 import org.sonar.api.batch.sensor.highlighting.TypeOfText;
 import org.sonar.api.batch.sensor.internal.DefaultSensorDescriptor;
 import org.sonar.api.batch.sensor.internal.SensorContextTester;
@@ -46,6 +48,7 @@ import org.sonar.api.utils.log.LogTester;
 import org.sonar.duplications.internal.pmd.TokensLine;
 import org.sonar.plugin.typescript.executable.ExecutableBundle;
 import org.sonar.plugin.typescript.executable.ExecutableBundleFactory;
+import org.sonar.plugin.typescript.rules.TypeScriptRules;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Matchers.any;
@@ -201,7 +204,8 @@ public class ExternalTypescriptSensorTest {
     when(fileLinesContextFactory.createFor(any(InputFile.class))).thenReturn(fileLinesContext);
 
     noSonarFilter = mock(NoSonarFilter.class);
-    return new ExternalTypescriptSensor(executableBundleFactory, noSonarFilter, fileLinesContextFactory);
+    CheckFactory checkFactory = new CheckFactory(mock(ActiveRules.class));
+    return new ExternalTypescriptSensor(executableBundleFactory, noSonarFilter, fileLinesContextFactory, checkFactory);
   }
 
   private DefaultInputFile createTestInputFile(SensorContextTester sensorContext) {
@@ -251,6 +255,11 @@ public class ExternalTypescriptSensorTest {
         Command command = Command.create(sonarCommand[0]);
         command.addArguments(Arrays.copyOfRange(sonarCommand, 1, sonarCommand.length));
         return command;
+      }
+
+      @Override
+      public void activateRules(TypeScriptRules typeScriptRules) {
+
       }
     }
   }

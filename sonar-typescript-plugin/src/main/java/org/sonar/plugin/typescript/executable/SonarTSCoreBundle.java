@@ -25,12 +25,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.sonar.api.utils.command.Command;
+import org.sonar.plugin.typescript.rules.TypeScriptRules;
 
 public class SonarTSCoreBundle implements ExecutableBundle {
 
@@ -135,4 +137,14 @@ public class SonarTSCoreBundle implements ExecutableBundle {
     }
   }
 
+  @Override
+  public void activateRules(TypeScriptRules typeScriptRules) {
+    TsLintConfig config = new TsLintConfig();
+    typeScriptRules.forEach(config::addRule);
+    config.save(getTsLintConfigPath());
+  }
+
+  private Path getTsLintConfigPath() {
+    return deployDestination.toPath().resolve("sonarts-core/tslint.json");
+  }
 }

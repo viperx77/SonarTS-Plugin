@@ -17,17 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonar.plugin.typescript.executable;
-
-import java.io.File;
-import org.sonar.api.utils.command.Command;
-import org.sonar.plugin.typescript.rules.TypeScriptRules;
-
-public interface ExecutableBundle {
-
-  Command getTslintCommand(File projectBaseDir);
-
-  Command getTsMetricsCommand();
-
-  void activateRules(TypeScriptRules typeScriptRules);
-}
+/**
+ * Provides classes representing rules with parameters
+ */
+@javax.annotation.ParametersAreNonnullByDefault
+package org.sonar.plugin.typescript.rules;

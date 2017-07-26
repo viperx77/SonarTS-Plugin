@@ -17,17 +17,30 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonar.plugin.typescript.executable;
+package org.sonar.plugin.typescript.rules;
 
-import java.io.File;
-import org.sonar.api.utils.command.Command;
-import org.sonar.plugin.typescript.rules.TypeScriptRules;
+import com.google.gson.JsonElement;
+import org.sonar.check.Rule;
+import org.sonar.check.RuleProperty;
 
-public interface ExecutableBundle {
+@Rule(key = "S104")
+public class MaxFileLineCount implements TypeScriptRule {
 
-  Command getTslintCommand(File projectBaseDir);
+  private static final int DEFAULT_MAXIMUM = 1000;
 
-  Command getTsMetricsCommand();
+  @RuleProperty(
+    key = "Max",
+    description = "Maximum authorized lines in a file.",
+    defaultValue = "" + DEFAULT_MAXIMUM)
+  int maximum = DEFAULT_MAXIMUM;
 
-  void activateRules(TypeScriptRules typeScriptRules);
+  @Override
+  public JsonElement configuration() {
+    return TypeScriptRule.ruleConfiguration(maximum);
+  }
+
+  @Override
+  public String tsLintKey() {
+    return "max-file-line-count";
+  }
 }

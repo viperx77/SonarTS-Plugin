@@ -17,17 +17,27 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonar.plugin.typescript.executable;
+package org.sonar.plugin.typescript.rules;
 
-import java.io.File;
-import org.sonar.api.utils.command.Command;
-import org.sonar.plugin.typescript.rules.TypeScriptRules;
+import com.google.gson.Gson;
+import org.junit.Test;
 
-public interface ExecutableBundle {
+import static org.assertj.core.api.Assertions.assertThat;
 
-  Command getTslintCommand(File projectBaseDir);
+public class MaxLineLengthTest {
 
-  Command getTsMetricsCommand();
+  @Test
+  public void default_configuration() throws Exception {
+    String configuration = new Gson().toJson(new MaxLineLength().configuration());
+    assertThat(configuration).isEqualTo("[true,180]");
+  }
 
-  void activateRules(TypeScriptRules typeScriptRules);
+  @Test
+  public void custom_configuration() throws Exception {
+    MaxLineLength maxLineLength = new MaxLineLength();
+    maxLineLength.maximumLineLength = 120;
+    String configuration = new Gson().toJson(maxLineLength.configuration());
+    assertThat(configuration).isEqualTo("[true,120]");
+  }
+
 }

@@ -19,17 +19,36 @@
  */
 package org.sonar.plugin.typescript;
 
+import com.google.common.io.Files;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
+import org.sonar.api.batch.rule.ActiveRule;
+import org.sonar.api.batch.rule.ActiveRules;
+import org.sonar.api.batch.rule.CheckFactory;
+import org.sonar.api.batch.rule.Checks;
+import org.sonar.api.rule.RuleKey;
 import org.sonar.api.utils.command.Command;
 import org.sonar.plugin.typescript.executable.ExecutableBundle;
 import org.sonar.plugin.typescript.executable.SonarTSCoreBundleFactory;
+import org.sonar.plugin.typescript.rules.TypeScriptRule;
+import org.sonar.plugin.typescript.rules.TypeScriptRules;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyCollection;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class SonarTSCoreBundleTest {
 
@@ -71,4 +90,44 @@ public class SonarTSCoreBundleTest {
     new SonarTSCoreBundleFactory("/badZip.zip").createAndDeploy(DEPLOY_DESTINATION);
   }
 
+  @Test
+  public void should_activate_rules() throws Exception {
+    ExecutableBundle bundle = new SonarTSCoreBundleFactory("/testBundle.zip").createAndDeploy(DEPLOY_DESTINATION);
+    TypeScriptRules typeScriptRules = new TypeScriptRules(mockActiveRules("SXXX"), mockCheckFactory());
+    bundle.activateRules(typeScriptRules);
+    List<String> strings = Files.readLines(new File(DEPLOY_DESTINATION, "sonarts-core/tslint.json"), StandardCharsets.UTF_8);
+    String json = strings.stream().collect(Collectors.joining()).replaceAll("\\s+","");
+    assertThat(json).isEqualTo("{\"extends\": [\"tslint-sonarts\"], \"rules\": {\"test-rule\": true}}".replaceAll("\\s+",""));
+  }
+
+  private static class TestRule implements TypeScriptRule {
+    @Override
+    public JsonElement configuration() {
+      return new JsonPrimitive(true);
+    }
+
+    @Override
+    public String tsLintKey() {
+      return "test-rule";
+    }
+  }
+
+  private CheckFactory mockCheckFactory() {
+    Checks checks = mock(Checks.class);
+    when(checks.addAnnotatedChecks((Iterable) anyCollection())).thenReturn(checks);
+    TestRule testRule = new TestRule();
+    when(checks.of(any())).thenReturn(testRule);
+    when(checks.all()).thenReturn(Collections.singleton(testRule));
+    CheckFactory checkFactory = mock(CheckFactory.class);
+    when(checkFactory.create(anyString())).thenReturn(checks);
+    return checkFactory;
+  }
+
+  private ActiveRules mockActiveRules(String rule) {
+    ActiveRule activeRule = mock(ActiveRule.class);
+    when(activeRule.ruleKey()).thenReturn(RuleKey.of(TypeScriptRulesDefinition.REPOSITORY_KEY, rule));
+    ActiveRules activeRules = mock(ActiveRules.class);
+    when(activeRules.findByRepository(anyString())).thenReturn(Collections.singleton(activeRule));
+    return activeRules;
+  }
 }

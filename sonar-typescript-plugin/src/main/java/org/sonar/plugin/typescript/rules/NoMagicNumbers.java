@@ -17,17 +17,21 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonar.plugin.typescript.executable;
+package org.sonar.plugin.typescript.rules;
 
-import java.io.File;
-import org.sonar.api.utils.command.Command;
-import org.sonar.plugin.typescript.rules.TypeScriptRules;
+import com.google.gson.JsonElement;
+import org.sonar.check.Rule;
 
-public interface ExecutableBundle {
+@Rule(key = "S109")
+public class NoMagicNumbers implements TypeScriptRule {
 
-  Command getTslintCommand(File projectBaseDir);
+  @Override
+  public JsonElement configuration() {
+    return TypeScriptRule.ruleConfiguration(1, 0, -1);
+  }
 
-  Command getTsMetricsCommand();
-
-  void activateRules(TypeScriptRules typeScriptRules);
+  @Override
+  public String tsLintKey() {
+    return "no-magic-numbers";
+  }
 }
