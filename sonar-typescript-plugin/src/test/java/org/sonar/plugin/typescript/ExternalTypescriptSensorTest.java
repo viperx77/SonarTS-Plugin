@@ -58,9 +58,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-/**
- *
- */
 public class ExternalTypescriptSensorTest {
 
   private static final File BASE_DIR = new File(".");
@@ -107,7 +104,7 @@ public class ExternalTypescriptSensorTest {
     SensorContextTester sensorContext = createSensorContext();
     DefaultInputFile testInputFile = createTestInputFile(sensorContext);
 
-    ExternalTypescriptSensor sensor = createSensor(new TestBundleFactory().tsMetrics(node, resourceScript("/mockTsMetrics.js"))
+    ExternalTypescriptSensor sensor = createSensor(new TestBundleFactory().tsMetrics(node, resourceScript("/mockTsMetrics.js"), testInputFile.absolutePath())
       .tslint(node, resourceScript("/mockTsLint.js"), testInputFile.absolutePath()));
 
     sensor.execute(sensorContext);
@@ -145,13 +142,11 @@ public class ExternalTypescriptSensorTest {
 
   @Test
   public void should_fail_when_failed_tslint_process() throws Exception {
-    TestBundleFactory testBundle = new TestBundleFactory().tslint("non_existent_command", "arg1");
+    TestBundleFactory testBundle = new TestBundleFactory().tslint("non_existent_command", "arg1").tsMetrics(node, resourceScript("/mockTsMetrics.js"), "some/path/file.ts");
 
     thrown.expect(IllegalStateException.class);
     thrown.expectMessage("Failed to run external process `non_existent_command arg1`");
 
-    // fails even without single file in project as command run once per command
-    // as there is no files, tsMetrics is not executed
     createSensor(testBundle).execute(createSensorContext());
   }
 
@@ -159,17 +154,15 @@ public class ExternalTypescriptSensorTest {
   public void should_log_when_failed_ts_metrics_process() throws Exception {
     TestBundleFactory testBundle = new TestBundleFactory().tsMetrics("non_existent_command", "arg1").tslint(node, "-e", "console.log('[]');");
     SensorContextTester sensorContext = createSensorContext();
-    // fails only with at least one file as command run one per file
-    DefaultInputFile testInputFile = createTestInputFile(sensorContext);
     createSensor(testBundle).execute(sensorContext);
 
-    assertThat(logTester.logs()).contains("Failed to run external process `non_existent_command arg1` for file " + testInputFile.absolutePath());
+    assertThat(logTester.logs()).contains("Failed to run external process `non_existent_command arg1`");
   }
 
   @Test
   public void should_do_nothing_when_tslint_report_with_not_existing_file() throws Exception {
     String testFile = new File(BASE_DIR, "not_exists.ts").getAbsolutePath();
-    ExternalTypescriptSensor sensor = createSensor(new TestBundleFactory().tsMetrics(node, resourceScript("/mockTsMetrics.js")).tslint(node, resourceScript("/mockTsLint.js"), testFile));
+    ExternalTypescriptSensor sensor = createSensor(new TestBundleFactory().tsMetrics(node, resourceScript("/mockTsMetrics.js"), "some/path/file.ts").tslint(node, resourceScript("/mockTsLint.js"), testFile));
     SensorContextTester sensorContext = createSensorContext();
     sensor.execute(sensorContext);
     assertThat(sensorContext.allIssues()).hasSize(0);
@@ -177,14 +170,12 @@ public class ExternalTypescriptSensorTest {
 
   @Test
   public void should_fail_when_stdErr_tslint_is_not_empty() throws Exception {
-    TestBundleFactory testBundle = new TestBundleFactory().tslint("cat", "not_existing_file");
+    TestBundleFactory testBundle = new TestBundleFactory().tslint("cat", "not_existing_file").tsMetrics(node, resourceScript("/mockTsMetrics.js"), "some/path/file.ts");
 
     thrown.expect(IllegalStateException.class);
     thrown.expectMessage("Failed to run external process `cat not_existing_file`");
     // it would be nice to assert thrown.expectCause (available since jUnit 4.11)
 
-    // fails even without single file in project as command run once per command
-    // as there is no files, tsMetrics is not executed
     createSensor(testBundle).execute(createSensorContext());
   }
 

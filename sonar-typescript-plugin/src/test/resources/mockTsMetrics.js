@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-var result = {
+var result = [{
+    "filepath": process.argv[2],
     "highlights": [
         {
             "startLine": 2,
@@ -10,7 +11,6 @@ var result = {
             "textType": "keyword"
         }
     ],
-
     "cpdTokens": [
         {
          "startLine": 2,
@@ -34,7 +34,7 @@ var result = {
     "statements":100,
     "functions":10,
     "classes":1
-};
+}];
 
 process.stdin.on('data', function () {
  // needed for 'end' to be sent
