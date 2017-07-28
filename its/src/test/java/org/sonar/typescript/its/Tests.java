@@ -40,7 +40,8 @@ import static java.util.Collections.singletonList;
   TypescriptPluginTest.class,
   CpdTest.class,
   TsxTest.class,
-  ProfileTest.class
+  ProfileTest.class,
+  CoverageTest.class
 })
 public class Tests {
 
