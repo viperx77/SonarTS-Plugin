@@ -19,19 +19,12 @@
  */
 package org.sonar.plugin.typescript.rules;
 
+import org.sonar.check.Rule;
 
-import com.google.gson.Gson;
-import org.junit.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-public class NoMagicNumbersTest {
-
-  @Test
-  public void configuration() throws Exception {
-    NoMagicNumbers noMagicNumbers = new NoMagicNumbers();
-    noMagicNumbers.enable();
-    String configuration = new Gson().toJson(noMagicNumbers.configuration());
-    assertThat(configuration).isEqualTo("[true,1,0,-1]");
+@Rule(key = "S2757")
+public class NoMisspelledOperator extends TypeScriptRule {
+  @Override
+  public String tsLintKey() {
+    return "no-misspelled-operator";
   }
 }

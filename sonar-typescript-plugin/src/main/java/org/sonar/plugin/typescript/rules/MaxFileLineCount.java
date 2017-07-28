@@ -24,7 +24,7 @@ import org.sonar.check.Rule;
 import org.sonar.check.RuleProperty;
 
 @Rule(key = "S104")
-public class MaxFileLineCount implements TypeScriptRule {
+public class MaxFileLineCount extends TypeScriptRule {
 
   private static final int DEFAULT_MAXIMUM = 1000;
 
@@ -36,7 +36,7 @@ public class MaxFileLineCount implements TypeScriptRule {
 
   @Override
   public JsonElement configuration() {
-    return TypeScriptRule.ruleConfiguration(maximum);
+    return ruleConfiguration(maximum);
   }
 
   @Override

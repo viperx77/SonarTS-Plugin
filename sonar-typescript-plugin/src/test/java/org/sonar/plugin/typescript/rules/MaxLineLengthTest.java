@@ -28,13 +28,16 @@ public class MaxLineLengthTest {
 
   @Test
   public void default_configuration() throws Exception {
-    String configuration = new Gson().toJson(new MaxLineLength().configuration());
+    MaxLineLength maxLineLength = new MaxLineLength();
+    maxLineLength.enable();
+    String configuration = new Gson().toJson(maxLineLength.configuration());
     assertThat(configuration).isEqualTo("[true,180]");
   }
 
   @Test
   public void custom_configuration() throws Exception {
     MaxLineLength maxLineLength = new MaxLineLength();
+    maxLineLength.enable();
     maxLineLength.maximumLineLength = 120;
     String configuration = new Gson().toJson(maxLineLength.configuration());
     assertThat(configuration).isEqualTo("[true,120]");

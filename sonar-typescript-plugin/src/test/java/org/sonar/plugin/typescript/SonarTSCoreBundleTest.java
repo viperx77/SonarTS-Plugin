@@ -32,11 +32,9 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
-import org.sonar.api.batch.rule.ActiveRule;
-import org.sonar.api.batch.rule.ActiveRules;
 import org.sonar.api.batch.rule.CheckFactory;
 import org.sonar.api.batch.rule.Checks;
-import org.sonar.api.rule.RuleKey;
+import org.sonar.api.internal.apachecommons.lang.StringUtils;
 import org.sonar.api.utils.command.Command;
 import org.sonar.plugin.typescript.executable.ExecutableBundle;
 import org.sonar.plugin.typescript.executable.SonarTSCoreBundleFactory;
@@ -93,14 +91,17 @@ public class SonarTSCoreBundleTest {
   @Test
   public void should_activate_rules() throws Exception {
     ExecutableBundle bundle = new SonarTSCoreBundleFactory("/testBundle.zip").createAndDeploy(DEPLOY_DESTINATION);
-    TypeScriptRules typeScriptRules = new TypeScriptRules(mockActiveRules("SXXX"), mockCheckFactory());
+    TypeScriptRules typeScriptRules = new TypeScriptRules(new CheckFactory(new TestActiveRules("S1751")));
     bundle.activateRules(typeScriptRules);
     List<String> strings = Files.readLines(new File(DEPLOY_DESTINATION, "sonarts-core/tslint.json"), StandardCharsets.UTF_8);
     String json = strings.stream().collect(Collectors.joining()).replaceAll("\\s+","");
-    assertThat(json).isEqualTo("{\"extends\": [\"tslint-sonarts\"], \"rules\": {\"test-rule\": true}}".replaceAll("\\s+",""));
+    assertThat(json).contains("\"extends\":[\"tslint-sonarts\"]");
+    assertThat(json).contains("\"no-unconditional-jump\":true");
+    // only one occurrence of true
+    assertThat(StringUtils.countMatches(json, "true")).isEqualTo(1);
   }
 
-  private static class TestRule implements TypeScriptRule {
+  private static class TestRule extends TypeScriptRule {
     @Override
     public JsonElement configuration() {
       return new JsonPrimitive(true);
@@ -123,11 +124,4 @@ public class SonarTSCoreBundleTest {
     return checkFactory;
   }
 
-  private ActiveRules mockActiveRules(String rule) {
-    ActiveRule activeRule = mock(ActiveRule.class);
-    when(activeRule.ruleKey()).thenReturn(RuleKey.of(TypeScriptRulesDefinition.REPOSITORY_KEY, rule));
-    ActiveRules activeRules = mock(ActiveRules.class);
-    when(activeRules.findByRepository(anyString())).thenReturn(Collections.singleton(activeRule));
-    return activeRules;
-  }
 }

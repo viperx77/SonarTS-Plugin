@@ -38,7 +38,7 @@ public class TypeScriptRulesDefinitionTest {
 
     assertThat(repository.name()).isEqualTo("SonarAnalyzer");
     assertThat(repository.language()).isEqualTo("ts");
-    assertThat(repository.rules()).hasSize(TypeScriptRules.TSLINT_TO_SONAR_KEY.size());
+    assertThat(repository.rules()).hasSize(TypeScriptRules.getRuleClasses().size());
 
     assertRuleProperties(repository);
     assertAllRuleParametersHaveDescription(repository);

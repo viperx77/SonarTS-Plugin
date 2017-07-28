@@ -19,19 +19,13 @@
  */
 package org.sonar.plugin.typescript.rules;
 
+import org.sonar.check.Rule;
 
-import com.google.gson.Gson;
-import org.junit.Test;
+@Rule(key = "S2201")
+public class NoIgnoredReturn extends TypeScriptRule {
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-public class NoMagicNumbersTest {
-
-  @Test
-  public void configuration() throws Exception {
-    NoMagicNumbers noMagicNumbers = new NoMagicNumbers();
-    noMagicNumbers.enable();
-    String configuration = new Gson().toJson(noMagicNumbers.configuration());
-    assertThat(configuration).isEqualTo("[true,1,0,-1]");
+  @Override
+  public String tsLintKey() {
+    return "no-ignored-return";
   }
 }

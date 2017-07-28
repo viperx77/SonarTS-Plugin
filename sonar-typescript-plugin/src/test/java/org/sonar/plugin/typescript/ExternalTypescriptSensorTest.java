@@ -34,7 +34,6 @@ import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.batch.fs.InputFile.Type;
 import org.sonar.api.batch.fs.internal.DefaultInputFile;
 import org.sonar.api.batch.fs.internal.TestInputFileBuilder;
-import org.sonar.api.batch.rule.ActiveRules;
 import org.sonar.api.batch.rule.CheckFactory;
 import org.sonar.api.batch.sensor.highlighting.TypeOfText;
 import org.sonar.api.batch.sensor.internal.DefaultSensorDescriptor;
@@ -195,7 +194,7 @@ public class ExternalTypescriptSensorTest {
     when(fileLinesContextFactory.createFor(any(InputFile.class))).thenReturn(fileLinesContext);
 
     noSonarFilter = mock(NoSonarFilter.class);
-    CheckFactory checkFactory = new CheckFactory(mock(ActiveRules.class));
+    CheckFactory checkFactory = new CheckFactory(new TestActiveRules("S1751"));
     return new ExternalTypescriptSensor(executableBundleFactory, noSonarFilter, fileLinesContextFactory, checkFactory);
   }
 
@@ -254,4 +253,5 @@ public class ExternalTypescriptSensorTest {
       }
     }
   }
+
 }

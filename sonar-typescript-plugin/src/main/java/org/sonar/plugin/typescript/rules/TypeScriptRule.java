@@ -19,19 +19,34 @@
  */
 package org.sonar.plugin.typescript.rules;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
 
-public interface TypeScriptRule {
+public abstract class TypeScriptRule {
 
-  JsonElement configuration();
+  private boolean enabled;
 
-  String tsLintKey();
+  public JsonElement configuration() {
+    return new JsonPrimitive(enabled);
+  }
 
-  static JsonArray ruleConfiguration(Object... params) {
+  void enable() {
+    enabled = true;
+  }
+
+  @VisibleForTesting
+  boolean isEnabled() {
+    return enabled;
+  }
+
+  public abstract String tsLintKey();
+
+  JsonArray ruleConfiguration(Object... params) {
     JsonArray configuration = new JsonArray();
     // enable rule
-    configuration.add(true);
+    configuration.add(enabled);
     for (Object param : params) {
       if (param instanceof Number) {
         configuration.add((Number) param);

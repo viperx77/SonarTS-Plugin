@@ -24,7 +24,7 @@ import org.sonar.check.Rule;
 import org.sonar.check.RuleProperty;
 
 @Rule(key = "S103")
-public class MaxLineLength implements TypeScriptRule {
+public class MaxLineLength extends TypeScriptRule {
 
   private static final int DEFAULT_MAXIMUM_LINE_LENGTH = 180;
 
@@ -36,7 +36,7 @@ public class MaxLineLength implements TypeScriptRule {
 
   @Override
   public JsonElement configuration() {
-    return TypeScriptRule.ruleConfiguration(maximumLineLength);
+    return ruleConfiguration(maximumLineLength);
   }
 
   @Override

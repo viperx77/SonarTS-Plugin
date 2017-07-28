@@ -23,11 +23,11 @@ import com.google.gson.JsonElement;
 import org.sonar.check.Rule;
 
 @Rule(key = "S109")
-public class NoMagicNumbers implements TypeScriptRule {
+public class NoMagicNumbers extends TypeScriptRule {
 
   @Override
   public JsonElement configuration() {
-    return TypeScriptRule.ruleConfiguration(1, 0, -1);
+    return ruleConfiguration(1, 0, -1);
   }
 
   @Override

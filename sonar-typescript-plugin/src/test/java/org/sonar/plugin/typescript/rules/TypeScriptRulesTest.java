@@ -27,23 +27,22 @@ import com.google.common.reflect.ClassPath.ClassInfo;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
-import java.util.Arrays;
+import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.assertj.core.util.Lists;
 import org.junit.Test;
-import org.sonar.api.batch.rule.ActiveRule;
-import org.sonar.api.batch.rule.ActiveRules;
 import org.sonar.api.batch.rule.CheckFactory;
 import org.sonar.api.batch.rule.Checks;
-import org.sonar.api.rule.RuleKey;
-import org.sonar.plugin.typescript.TypeScriptRulesDefinition;
+import org.sonar.plugin.typescript.TestActiveRules;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Matchers.anyCollection;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.booleanThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -63,35 +62,63 @@ public class TypeScriptRulesTest {
   }
 
   @Test
-  public void rule_instances_should_be_created_from_active_rules() throws Exception {
-    ActiveRules activeRules = mockActiveRules(mockActiveRule("S3923"));
-    TypeScriptRules rules = new TypeScriptRules(activeRules, new CheckFactory(activeRules));
-    assertThat(Iterables.size(rules)).isEqualTo(1);
-    assertThat(Iterables.getOnlyElement(rules).tsLintKey()).isEqualTo("no-all-duplicated-branches");
-    assertThat(Iterables.getOnlyElement(rules).configuration().getAsString()).isEqualTo("true");
+  public void no_duplicated_classes() throws Exception {
+    List<Class<? extends TypeScriptRule>> ruleClasses = TypeScriptRules.getRuleClasses();
+    assertThat((long) ruleClasses.size()).isEqualTo(ruleClasses.stream().distinct().count());
   }
 
   @Test
   public void rule_instances_should_be_created_for_configurable_rules() throws Exception {
-    TypeScriptRules rules = new TypeScriptRules(mockActiveRules(), mockCheckFactory());
-    assertThat(Iterables.size(rules)).isEqualTo(1);
-    TypeScriptRule ruleInstance = Iterables.getOnlyElement(rules);
-    assertThat(ruleInstance.tsLintKey()).isEqualTo("test-key");
-    assertThat(new Gson().toJson(ruleInstance.configuration())).isEqualTo("[true,\"test\",1,true,\"x\",[]]");
+    TypeScriptRules rules = new TypeScriptRules(mockCheckFactory());
+    TypeScriptRule rule = Iterables.getOnlyElement(Iterables.filter(rules, TypeScriptRule::isEnabled));
+    assertThat(rule.tsLintKey()).isEqualTo("test-rule");
+    assertThat(new Gson().toJson(rule.configuration())).isEqualTo("[true,\"test\",1,true,\"x\",[]]");
   }
 
   @Test
-  public void valid_tslint_mapping_should_return_key() throws Exception {
-    RuleKey ruleKey = RuleKey.of(TypeScriptRulesDefinition.REPOSITORY_KEY, "S3923");
-    String tsLintKey = TypeScriptRules.tsLintKey(ruleKey);
-    assertThat(tsLintKey).isEqualTo("no-all-duplicated-branches");
+  public void tslint_key_should_match_class_name() throws Exception {
+    TypeScriptRules rules = new TypeScriptRules(mockCheckFactory());
+    for (TypeScriptRule rule : rules) {
+      assertThat(keyToClassName(rule.tsLintKey())).isEqualTo(rule.getClass().getSimpleName());
+    }
+  }
+
+  private String keyToClassName(String tsLintKey) {
+    StringBuilder sb = new StringBuilder();
+    boolean upper = true;
+    for (char c : tsLintKey.toCharArray()) {
+      if (c == '-') {
+        upper = true;
+      } else {
+        sb.append(upper ? Character.toUpperCase(c) : c);
+        upper = false;
+      }
+    }
+    return sb.toString();
   }
 
   @Test
-  public void missing_tslint_mapping_should_throw() throws Exception {
-    assertThatThrownBy(() -> TypeScriptRules.tsLintKey(RuleKey.of("repo", "doesnt-exists")))
-      .isInstanceOf(NullPointerException.class)
-      .hasMessage("No tslint key mapping for repo:doesnt-exists");
+  public void no_active_rules_no_rule_enabled() throws Exception {
+    TypeScriptRules rules = new TypeScriptRules(new CheckFactory(new TestActiveRules()));
+    assertThat(rules).hasSize(TypeScriptRules.getRuleClasses().size());
+    assertThat(rules).allMatch(rule -> !rule.isEnabled());
+  }
+
+  @Test
+  public void key_mapping_should_exist_when_enabled() throws Exception {
+    String noUnconditionalJumpKey = "S1751";
+    TypeScriptRules rules = new TypeScriptRules(new CheckFactory(new TestActiveRules(noUnconditionalJumpKey)));
+    assertThat(rules.ruleKeyFromTsLintKey(new NoUnconditionalJump().tsLintKey()).rule()).isEqualTo(noUnconditionalJumpKey);
+  }
+
+  @Test
+  public void key_mapping_should_not_exist_when_disabled() throws Exception {
+    TypeScriptRules rules = new TypeScriptRules(new CheckFactory(new TestActiveRules()));
+    for (TypeScriptRule rule : rules) {
+      assertThatThrownBy(() -> rules.ruleKeyFromTsLintKey(rule.tsLintKey()))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("Unknown tslint rule or rule not enabled " + rule.tsLintKey());
+    }
   }
 
   private CheckFactory mockCheckFactory() {
@@ -104,27 +131,15 @@ public class TypeScriptRulesTest {
     return checkFactory;
   }
 
-  private ActiveRules mockActiveRules(ActiveRule... rules) {
-    ActiveRules activeRules = mock(ActiveRules.class);
-    when(activeRules.findByRepository(anyString())).thenReturn(Arrays.asList(rules));
-    return activeRules;
-  }
-
-  private ActiveRule mockActiveRule(String key) {
-    ActiveRule activeRule = mock(ActiveRule.class);
-    when(activeRule.ruleKey()).thenReturn(RuleKey.of(TypeScriptRulesDefinition.REPOSITORY_KEY, key));
-    return activeRule;
-  }
-
-  private static class TestRule implements TypeScriptRule {
+  private static class TestRule extends TypeScriptRule {
     @Override
     public JsonElement configuration() {
-      return TypeScriptRule.ruleConfiguration("test", 1, true, 'x', new JsonArray());
+      return ruleConfiguration("test", 1, true, 'x', new JsonArray());
     }
 
     @Override
     public String tsLintKey() {
-      return "test-key";
+      return "test-rule";
     }
   }
 }

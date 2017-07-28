@@ -89,10 +89,11 @@ public class ExternalTypescriptSensor implements Sensor {
     File projectBaseDir = sensorContext.fileSystem().baseDir();
     LOG.info("Metrics calculation");
     runMetrics(sensorContext, executableBundle);
-    executableBundle.activateRules(new TypeScriptRules(sensorContext.activeRules(), checkFactory));
+    TypeScriptRules typeScriptRules = new TypeScriptRules(checkFactory);
+    executableBundle.activateRules(typeScriptRules);
     LOG.info("Rules execution");
     Failure[] failures = runRules(executableBundle, projectBaseDir);
-    saveFailures(sensorContext, failures);
+    saveFailures(sensorContext, failures, typeScriptRules);
   }
 
   private static Failure[] runRules(ExecutableBundle executableBundle, File projectBaseDir) {
@@ -214,13 +215,13 @@ public class ExternalTypescriptSensor implements Sensor {
     return String.format("Failed to run external process `%s`", command);
   }
 
-  private void saveFailures(SensorContext sensorContext, Failure[] failures) {
+  private void saveFailures(SensorContext sensorContext, Failure[] failures, TypeScriptRules typeScriptRules) {
     LOG.debug("Typescript analysis raised " + failures.length + " issues");
     FileSystem fs = sensorContext.fileSystem();
     for (Failure failure : failures) {
       InputFile inputFile = fs.inputFile(fs.predicates().hasAbsolutePath(failure.name));
       if (inputFile != null) {
-        RuleKey ruleKey = TypeScriptRules.ruleKeyFromTsLintKey(failure.ruleName);
+        RuleKey ruleKey = typeScriptRules.ruleKeyFromTsLintKey(failure.ruleName);
         NewIssue issue = sensorContext.newIssue().forRule(ruleKey);
         NewIssueLocation location = issue.newLocation();
         location.on(inputFile);
