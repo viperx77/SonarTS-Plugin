@@ -1,13 +1,13 @@
 {
-  "title": "Lines should not be too long",
+  "title": "Variables should not be redeclared",
   "type": "CODE_SMELL",
   "status": "ready",
   "remediation": {
     "func": "Constant\/Issue",
-    "constantCost": "1min"
+    "constantCost": "20min"
   },
   "tags": [
-    "convention"
+    "confusing"
   ],
   "defaultSeverity": "Major"
 }

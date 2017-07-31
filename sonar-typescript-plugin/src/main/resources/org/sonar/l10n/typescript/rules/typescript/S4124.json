@@ -1,13 +1,13 @@
 {
-  "title": "Lines should not be too long",
-  "type": "CODE_SMELL",
+  "title": "Constructors should not be declared inside interfaces",
+  "type": "BUG",
   "status": "ready",
   "remediation": {
     "func": "Constant\/Issue",
-    "constantCost": "1min"
+    "constantCost": "5min"
   },
   "tags": [
-    "convention"
+    
   ],
   "defaultSeverity": "Major"
 }

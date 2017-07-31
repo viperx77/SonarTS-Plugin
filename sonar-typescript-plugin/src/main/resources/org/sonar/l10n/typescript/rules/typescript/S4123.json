@@ -1,5 +1,5 @@
 {
-  "title": "Lines should not be too long",
+  "title": "\"await\" should only be used with promises",
   "type": "CODE_SMELL",
   "status": "ready",
   "remediation": {
@@ -7,7 +7,7 @@
     "constantCost": "1min"
   },
   "tags": [
-    "convention"
+    "confusing"
   ],
-  "defaultSeverity": "Major"
+  "defaultSeverity": "Critical"
 }

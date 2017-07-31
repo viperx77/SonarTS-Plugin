@@ -1,13 +1,13 @@
 {
-  "title": "Lines should not be too long",
-  "type": "CODE_SMELL",
+  "title": "\"NaN\" should not be used in comparisons",
+  "type": "BUG",
   "status": "ready",
   "remediation": {
     "func": "Constant\/Issue",
-    "constantCost": "1min"
+    "constantCost": "5min"
   },
   "tags": [
-    "convention"
+    "cert"
   ],
   "defaultSeverity": "Major"
 }
