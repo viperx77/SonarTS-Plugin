@@ -92,7 +92,7 @@ public class TypescriptPluginTest {
 
     // Tests
     assertThat(getProjectMeasureAsDouble("tests")).isNull();
-    assertThat(getProjectMeasureAsDouble("coverage")).isNull();
+    assertThat(getProjectMeasureAsDouble("coverage")).isEqualTo(0.0);
   }
 
   private Double getProjectMeasureAsDouble(String metric) {

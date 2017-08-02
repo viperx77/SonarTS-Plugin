@@ -182,6 +182,10 @@ public class ExternalTypescriptSensor implements Sensor {
       fileLinesContext.setIntValue(CoreMetrics.COMMENT_LINES_DATA_KEY, line, 1);
     }
 
+    for (int line : tsMetricsPerFileResponse.executableLines) {
+      fileLinesContext.setIntValue(CoreMetrics.EXECUTABLE_LINES_DATA_KEY, line, 1);
+    }
+
     fileLinesContext.save();
   }
 
@@ -262,6 +266,7 @@ public class ExternalTypescriptSensor implements Sensor {
     int[] ncloc;
     int[] commentLines;
     Integer[] nosonarLines;
+    int[] executableLines;
     int functions;
     int statements;
     int classes;

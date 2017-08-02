@@ -31,6 +31,7 @@ var result = [{
     "ncloc":[55, 77, 99],
     "commentLines":[24, 42],
     "nosonarLines":[24],
+    "executableLines": [5, 7],
     "statements":100,
     "functions":10,
     "classes":1
