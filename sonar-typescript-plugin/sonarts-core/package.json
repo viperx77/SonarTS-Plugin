@@ -6,6 +6,6 @@
   "devDependencies": {
     "typescript": "2.3.2",
     "tslint": "5.4.2",
-    "tslint-sonarts": "1.0.0-2"
+    "tslint-sonarts": "1.0.0-3"
   }
 }
