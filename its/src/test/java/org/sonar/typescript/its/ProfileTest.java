@@ -20,8 +20,6 @@
 package org.sonar.typescript.its;
 
 import com.sonar.orchestrator.Orchestrator;
-import com.sonar.orchestrator.build.SonarScanner;
-import com.sonar.orchestrator.locator.FileLocation;
 import java.util.Collections;
 import java.util.List;
 import org.junit.BeforeClass;
@@ -44,15 +42,9 @@ public class ProfileTest {
   public static void prepare() {
     orchestrator.resetData();
 
-    SonarScanner build = createScanner()
-      .setProjectDir(FileLocation.of("projects/profile-test-project").getFile())
-      .setProjectKey(PROJECT_KEY)
-      .setProjectName(PROJECT_KEY)
-      .setProjectVersion("1.0")
-      .setProfile("test-profile")
-      .setSourceDirs(".");
-
-    orchestrator.executeBuild(build);
+    orchestrator.executeBuild(
+      Tests.createScanner("projects/profile-test-project", PROJECT_KEY)
+        .setProfile("test-profile"));
   }
 
   /**
@@ -65,11 +57,4 @@ public class ProfileTest {
     List<Issue> issuesList = newWsClient().issues().search(request).getIssuesList();
     assertThat(issuesList).extracting("line").containsExactlyInAnyOrder(1, 2);
   }
-
-  private static SonarScanner createScanner() {
-    SonarScanner scanner = SonarScanner.create();
-    scanner.setSourceEncoding("UTF-8");
-    return scanner;
-  }
-
 }

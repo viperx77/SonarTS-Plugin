@@ -21,8 +21,6 @@ package org.sonar.typescript.its;
 
 import com.google.common.collect.ImmutableList;
 import com.sonar.orchestrator.Orchestrator;
-import com.sonar.orchestrator.build.SonarScanner;
-import com.sonar.orchestrator.locator.FileLocation;
 import java.util.Collections;
 import java.util.List;
 import org.junit.BeforeClass;
@@ -45,14 +43,7 @@ public class TypescriptPluginTest {
   public static void prepare() {
     orchestrator.resetData();
 
-    SonarScanner build = createScanner()
-      .setProjectDir(FileLocation.of("projects/plugin-test-project").getFile())
-      .setProjectKey(PROJECT_KEY)
-      .setProjectName(PROJECT_KEY)
-      .setProjectVersion("1.0")
-      .setSourceDirs(".");
-
-    orchestrator.executeBuild(build);
+    orchestrator.executeBuild(Tests.createScanner("projects/plugin-test-project", PROJECT_KEY));
   }
 
   @Test
@@ -98,11 +89,4 @@ public class TypescriptPluginTest {
   private Double getProjectMeasureAsDouble(String metric) {
     return Tests.getProjectMeasureAsDouble(metric, PROJECT_KEY);
   }
-
-  private static SonarScanner createScanner() {
-    SonarScanner scanner = SonarScanner.create();
-    scanner.setSourceEncoding("UTF-8");
-    return scanner;
-  }
-
 }

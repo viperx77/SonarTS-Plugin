@@ -20,8 +20,6 @@
 package org.sonar.typescript.its;
 
 import com.sonar.orchestrator.Orchestrator;
-import com.sonar.orchestrator.build.SonarScanner;
-import com.sonar.orchestrator.locator.FileLocation;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -42,25 +40,14 @@ public class CoverageTest {
 
   @Test
   public void LCOV_report_paths() {
-    SonarScanner build = createScanner()
-      .setProjectDir(FileLocation.of("projects/coverage-test-project").getFile())
-      .setProjectKey(PROJECT_KEY)
-      .setProjectName(PROJECT_KEY)
-      .setProjectVersion("1.0")
-      .setSourceDirs(".")
-      .setProperty("sonar.typescript.lcov.reportPaths", "lcov.info");
-    orchestrator.executeBuild(build);
+    orchestrator.executeBuild(
+      Tests.createScanner("projects/coverage-test-project", PROJECT_KEY)
+        .setProperty("sonar.typescript.lcov.reportPaths", "lcov.info"));
 
     assertThat(getProjectMeasureAsInt("lines_to_cover")).isEqualTo(5);
     assertThat(getProjectMeasureAsInt("uncovered_lines")).isEqualTo(0);
     assertThat(getProjectMeasureAsInt("conditions_to_cover")).isEqualTo(4);
     assertThat(getProjectMeasureAsInt("uncovered_conditions")).isEqualTo(2);
-  }
-
-  private static SonarScanner createScanner() {
-    SonarScanner scanner = SonarScanner.create();
-    scanner.setSourceEncoding("UTF-8");
-    return scanner;
   }
 
   private Double getProjectMeasureAsInt(String metricKey) {

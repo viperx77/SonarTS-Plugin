@@ -19,22 +19,14 @@
  */
 package org.sonar.typescript.its;
 
-import com.google.common.collect.ImmutableList;
 import com.sonar.orchestrator.Orchestrator;
-import java.util.Collections;
-import java.util.List;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
-import org.sonarqube.ws.Issues.Issue;
-import org.sonarqube.ws.client.issue.SearchWsRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.sonar.typescript.its.Tests.newWsClient;
 
-public class TsxTest {
-
-  private static String PROJECT_KEY = "SonarTS-tsx-test";
+public class FutureSyntaxTest {
 
   @ClassRule
   public static Orchestrator orchestrator = Tests.ORCHESTRATOR;
@@ -42,19 +34,14 @@ public class TsxTest {
   @BeforeClass
   public static void prepare() {
     orchestrator.resetData();
-
-    orchestrator.executeBuild(
-      Tests.createScanner("projects/tsx-test-project", PROJECT_KEY)
-        .setProfile("test-profile"));
   }
 
   @Test
-  public void should_raise_both_in_ts_and_tsx_files() {
-    SearchWsRequest request = new SearchWsRequest();
-    request.setProjectKeys(Collections.singletonList(PROJECT_KEY)).setRules(ImmutableList.of("typescript:S1764"));
-    List<Issue> issuesList = newWsClient().issues().search(request).getIssuesList();
-    assertThat(issuesList).hasSize(2);
-    assertThat(issuesList).extracting("line").containsExactlyInAnyOrder(2, 3);
-  }
+  public void should_not_fail_on_future_syntax() {
+    String PROJECT_KEY = "future-syntax";
 
+    orchestrator.executeBuild(Tests.createScanner("projects/future-syntax", PROJECT_KEY));
+
+    assertThat(Tests.getProjectMeasureAsDouble("ncloc", PROJECT_KEY)).isEqualTo(4);
+  }
 }

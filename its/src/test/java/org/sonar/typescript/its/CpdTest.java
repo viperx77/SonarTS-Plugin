@@ -20,8 +20,6 @@
 package org.sonar.typescript.its;
 
 import com.sonar.orchestrator.Orchestrator;
-import com.sonar.orchestrator.build.SonarScanner;
-import com.sonar.orchestrator.locator.FileLocation;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -39,25 +37,11 @@ public class CpdTest {
   public static void prepare() {
     orchestrator.resetData();
 
-    SonarScanner build = createScanner()
-      .setProjectDir(FileLocation.of("projects/cpd-test-project").getFile())
-      .setProjectKey(PROJECT_KEY)
-      .setProjectName(PROJECT_KEY)
-      .setProjectVersion("1.0")
-      .setSourceDirs(".");
-
-    orchestrator.executeBuild(build);
+    orchestrator.executeBuild(Tests.createScanner("projects/cpd-test-project", PROJECT_KEY));
   }
 
   @Test
   public void should_detect_duplication() {
     assertThat(Tests.getProjectMeasureAsDouble("duplicated_lines", PROJECT_KEY)).isEqualTo(116);
   }
-
-  private static SonarScanner createScanner() {
-    SonarScanner scanner = SonarScanner.create();
-    scanner.setSourceEncoding("UTF-8");
-    return scanner;
-  }
-
 }

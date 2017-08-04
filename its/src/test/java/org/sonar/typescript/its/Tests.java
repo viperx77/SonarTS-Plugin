@@ -20,12 +20,16 @@
 package org.sonar.typescript.its;
 
 import com.sonar.orchestrator.Orchestrator;
+import com.sonar.orchestrator.build.SonarScanner;
 import com.sonar.orchestrator.locator.FileLocation;
 import java.io.File;
 import java.util.List;
 import org.junit.ClassRule;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
+import org.sonar.api.utils.System2;
+import org.sonar.api.utils.command.Command;
+import org.sonar.api.utils.command.CommandExecutor;
 import org.sonarqube.ws.WsMeasures;
 import org.sonarqube.ws.WsMeasures.Measure;
 import org.sonarqube.ws.client.HttpConnector;
@@ -41,7 +45,8 @@ import static java.util.Collections.singletonList;
   CpdTest.class,
   TsxTest.class,
   ProfileTest.class,
-  CoverageTest.class
+  CoverageTest.class,
+  FutureSyntaxTest.class
 })
 public class Tests {
 
@@ -71,6 +76,33 @@ public class Tests {
       .setMetricKeys(singletonList(metricKey)));
     List<Measure> measures = response.getComponent().getMeasuresList();
     return measures.size() == 1 ? measures.get(0) : null;
+  }
+
+  private static void runNPMInstall(File projectDir) {
+    Command command = Command.create(System2.INSTANCE.isOsWindows() ? "npm.cmd" : "npm");
+    command.addArgument("install");
+    command.setDirectory(projectDir);
+
+    try {
+      CommandExecutor commandExecutor = CommandExecutor.create();
+      commandExecutor.execute(command, 600_000);
+    } catch (Exception e) {
+      throw new IllegalStateException(command.toCommandLine(), e);
+    }
+  }
+
+  public static SonarScanner createScanner(String location, String projectKey) {
+    File projectDir = FileLocation.of(location).getFile();
+
+    Tests.runNPMInstall(projectDir);
+
+    return SonarScanner.create()
+      .setSourceEncoding("UTF-8")
+      .setProjectDir(projectDir)
+      .setProjectKey(projectKey)
+      .setProjectName(projectKey)
+      .setProjectVersion("1.0")
+      .setSourceDirs("src");
   }
 
 }

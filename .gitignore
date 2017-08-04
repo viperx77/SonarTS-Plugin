@@ -1,5 +1,5 @@
 # npm
-sonar-typescript-plugin/sonarts-core/node_modules/
+node_modules/
 
 # Maven
 target/
