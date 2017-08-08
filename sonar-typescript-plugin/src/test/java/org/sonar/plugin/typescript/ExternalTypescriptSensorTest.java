@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -59,7 +60,7 @@ import static org.mockito.Mockito.when;
 
 public class ExternalTypescriptSensorTest {
 
-  private static final File BASE_DIR = new File(".");
+  private static final File BASE_DIR = new File("src/test/resources");
   private static String node;
 
   private FileLinesContext fileLinesContext;
@@ -137,6 +138,19 @@ public class ExternalTypescriptSensorTest {
     assertThat(cpd.get(0).getValue()).isEqualTo("foobar");
   }
 
+  @Test
+  public void should_find_tsconfig_in_directory_above() throws Exception {
+    SensorContextTester sensorContext = createSensorContext();
+    DefaultInputFile testInputFile = createTestInputFile(sensorContext, "foo/bar/file.ts");
+
+    ExternalTypescriptSensor sensor = createSensor(new TestBundleFactory().tsMetrics(node, resourceScript("/mockTsMetrics.js"), testInputFile.absolutePath())
+      .tslint(node, resourceScript("/mockTsLint.js"), testInputFile.absolutePath()));
+
+    sensor.execute(sensorContext);
+
+    assertThat(sensorContext.allIssues()).hasSize(1);
+  }
+
   private String resourceScript(String script) throws URISyntaxException {
     return new File(getClass().getResource(script).toURI()).getAbsolutePath();
   }
@@ -148,7 +162,9 @@ public class ExternalTypescriptSensorTest {
     thrown.expect(IllegalStateException.class);
     thrown.expectMessage("Failed to run external process `non_existent_command arg1`");
 
-    createSensor(testBundle).execute(createSensorContext());
+    SensorContextTester sensorContext = createSensorContext();
+    createTestInputFile(sensorContext);
+    createSensor(testBundle).execute(sensorContext);
   }
 
   @Test
@@ -161,24 +177,37 @@ public class ExternalTypescriptSensorTest {
   }
 
   @Test
+  public void should_log_when_tsconfig_for_file_not_found() throws Exception {
+    SensorContextTester sensorContext = createSensorContext();
+    // "file.ts" is in resources directory, where there is no tsconfig.json
+    DefaultInputFile inputFile = createTestInputFile(sensorContext, "file.ts");
+    TestBundleFactory testBundle = new TestBundleFactory().tsMetrics(node, resourceScript("/mockTsMetrics.js"), inputFile.absolutePath()).tslint(node, "-e", "console.log('[]');");
+
+    createSensor(testBundle).execute(sensorContext);
+
+    assertThat(logTester.logs()).contains("No tsconfig.json file found for " + inputFile.absolutePath() + " (looking up the directories tree). This file will not be analyzed.");
+  }
+
+  @Test
   public void should_do_nothing_when_tslint_report_with_not_existing_file() throws Exception {
     String testFile = new File(BASE_DIR, "not_exists.ts").getAbsolutePath();
-    ExternalTypescriptSensor sensor = createSensor(new TestBundleFactory().tsMetrics(node, resourceScript("/mockTsMetrics.js"), "some/path/file.ts").tslint(node, resourceScript("/mockTsLint.js"), testFile));
+    ExternalTypescriptSensor sensor = createSensor(new TestBundleFactory()
+      .tsMetrics(node, resourceScript("/mockTsMetrics.js"), "some/path/file.ts")
+      .tslint(node, resourceScript("/mockTsLint.js"), testFile));
     SensorContextTester sensorContext = createSensorContext();
+    createTestInputFile(sensorContext);
     sensor.execute(sensorContext);
     assertThat(sensorContext.allIssues()).hasSize(0);
   }
 
-  @Test
-  public void should_fail_when_stdErr_tslint_is_not_empty() throws Exception {
-    TestBundleFactory testBundle = new TestBundleFactory().tslint("cat", "not_existing_file").tsMetrics(node, resourceScript("/mockTsMetrics.js"), "some/path/file.ts");
-
-    thrown.expect(IllegalStateException.class);
-    thrown.expectMessage("Failed to run external process `cat not_existing_file`");
-    // it would be nice to assert thrown.expectCause (available since jUnit 4.11)
-
-    createSensor(testBundle).execute(createSensorContext());
-  }
+//  @Test
+//  public void should_not_fail_when_stdErr_tslint_is_not_empty() throws Exception {
+//    TestBundleFactory testBundle = new TestBundleFactory().tslint("cat", "not_existing_file").tsMetrics(node, resourceScript("/mockTsMetrics.js"), "some/path/file.ts");
+//    SensorContextTester sensorContext = createSensorContext();
+//    createSensor(testBundle).execute(sensorContext);
+//
+//    assertThat(sensorContext.allIssues()).hasSize(0);
+//  }
 
   private SensorContextTester createSensorContext() {
     SensorContextTester sensorContext = SensorContextTester.create(BASE_DIR);
@@ -201,7 +230,20 @@ public class ExternalTypescriptSensorTest {
   }
 
   private DefaultInputFile createTestInputFile(SensorContextTester sensorContext) {
-    DefaultInputFile testInputFile = new TestInputFileBuilder("moduleKey", "test.ts")
+    DefaultInputFile testInputFile = new TestInputFileBuilder("moduleKey", "foo/file.ts")
+      .setModuleBaseDir(BASE_DIR.toPath())
+      .setType(Type.MAIN)
+      .setLanguage(TypeScriptLanguage.KEY)
+      .setCharset(StandardCharsets.UTF_8)
+      .setContents(FILE_CONTENT)
+      .build();
+
+    sensorContext.fileSystem().add(testInputFile);
+    return testInputFile;
+  }
+
+  private DefaultInputFile createTestInputFile(SensorContextTester sensorContext, String relativePath) {
+    DefaultInputFile testInputFile = new TestInputFileBuilder("moduleKey", relativePath)
       .setModuleBaseDir(BASE_DIR.toPath())
       .setType(Type.MAIN)
       .setLanguage(TypeScriptLanguage.KEY)
@@ -236,13 +278,6 @@ public class ExternalTypescriptSensorTest {
     private class TestBundle implements ExecutableBundle {
 
       @Override
-      public Command getTslintCommand(File projectBaseDir) {
-        Command command = Command.create(ruleCheckCommand[0]);
-        command.addArguments(Arrays.copyOfRange(ruleCheckCommand, 1, ruleCheckCommand.length));
-        return command;
-      }
-
-      @Override
       public Command getTsMetricsCommand() {
         Command command = Command.create(sonarCommand[0]);
         command.addArguments(Arrays.copyOfRange(sonarCommand, 1, sonarCommand.length));
@@ -251,7 +286,13 @@ public class ExternalTypescriptSensorTest {
 
       @Override
       public void activateRules(TypeScriptRules typeScriptRules) {
+      }
 
+      @Override
+      public Command getTslintCommand(String tsconfigPath, Collection<InputFile> inputFiles) {
+        Command command = Command.create(ruleCheckCommand[0]);
+        command.addArguments(Arrays.copyOfRange(ruleCheckCommand, 1, ruleCheckCommand.length));
+        return command;
       }
     }
   }

@@ -20,33 +20,26 @@
 package org.sonar.plugin.typescript;
 
 import com.google.common.io.Files;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonPrimitive;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.assertj.core.util.Lists;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
+import org.sonar.api.batch.fs.internal.DefaultInputFile;
+import org.sonar.api.batch.fs.internal.TestInputFileBuilder;
 import org.sonar.api.batch.rule.CheckFactory;
-import org.sonar.api.batch.rule.Checks;
 import org.sonar.api.internal.apachecommons.lang.StringUtils;
 import org.sonar.api.utils.command.Command;
 import org.sonar.plugin.typescript.executable.ExecutableBundle;
 import org.sonar.plugin.typescript.executable.SonarTSCoreBundleFactory;
-import org.sonar.plugin.typescript.rules.TypeScriptRule;
 import org.sonar.plugin.typescript.rules.TypeScriptRules;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyCollection;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class SonarTSCoreBundleTest {
 
@@ -67,14 +60,17 @@ public class SonarTSCoreBundleTest {
   public void should_create_command() throws Exception {
     ExecutableBundle bundle = new SonarTSCoreBundleFactory("/testBundle.zip").createAndDeploy(DEPLOY_DESTINATION);
     File projectBaseDir = new File("/myProject");
-    Command ruleCommand = bundle.getTslintCommand(projectBaseDir);
+    File tsconfig = new File(projectBaseDir, "tsconfig.json");
+    DefaultInputFile file1 = new TestInputFileBuilder("moduleKey", "file1.ts").build();
+    DefaultInputFile file2 = new TestInputFileBuilder("moduleKey", "file1.ts").build();
+    Command ruleCommand = bundle.getTslintCommand(tsconfig.getAbsolutePath(), Lists.newArrayList(file1, file2));
 
 
     String tslint = new File(DEPLOY_DESTINATION, "sonarts-core/node_modules/tslint/bin/tslint").getAbsolutePath();
     String config = new File(DEPLOY_DESTINATION, "sonarts-core/tslint.json").getAbsolutePath();
 
-    assertThat(ruleCommand.toCommandLine()).isEqualTo("node " + tslint + " --config " + config + " --format json --type-check --project "
-      + projectBaseDir.getAbsolutePath() + File.separator + "tsconfig.json");
+    assertThat(ruleCommand.toCommandLine()).isEqualTo("node " + tslint + " --config " + config + " --format json --force --type-check --project "
+      + tsconfig.getAbsolutePath() + " " + file1.absolutePath() + " " + file2.absolutePath());
 
     Command sonarCommand = bundle.getTsMetricsCommand();
     assertThat(sonarCommand.toCommandLine()).isEqualTo("node " + new File(DEPLOY_DESTINATION, "sonarts-core/node_modules/tslint-sonarts/bin/tsmetrics").getAbsolutePath());
@@ -99,29 +95,6 @@ public class SonarTSCoreBundleTest {
     assertThat(json).contains("\"no-unconditional-jump\":true");
     // only one occurrence of true
     assertThat(StringUtils.countMatches(json, "true")).isEqualTo(1);
-  }
-
-  private static class TestRule extends TypeScriptRule {
-    @Override
-    public JsonElement configuration() {
-      return new JsonPrimitive(true);
-    }
-
-    @Override
-    public String tsLintKey() {
-      return "test-rule";
-    }
-  }
-
-  private CheckFactory mockCheckFactory() {
-    Checks checks = mock(Checks.class);
-    when(checks.addAnnotatedChecks((Iterable) anyCollection())).thenReturn(checks);
-    TestRule testRule = new TestRule();
-    when(checks.of(any())).thenReturn(testRule);
-    when(checks.all()).thenReturn(Collections.singleton(testRule));
-    CheckFactory checkFactory = mock(CheckFactory.class);
-    when(checkFactory.create(anyString())).thenReturn(checks);
-    return checkFactory;
   }
 
 }

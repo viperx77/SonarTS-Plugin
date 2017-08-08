@@ -19,7 +19,9 @@
  */
 package org.sonar.plugin.typescript;
 
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import java.io.File;
@@ -27,8 +29,10 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import javax.annotation.Nullable;
 import org.sonar.api.batch.fs.FilePredicate;
 import org.sonar.api.batch.fs.FileSystem;
 import org.sonar.api.batch.fs.InputFile;
@@ -68,8 +72,10 @@ public class ExternalTypescriptSensor implements Sensor {
   /**
    * ExecutableBundleFactory is injected for testability purposes
    */
-  public ExternalTypescriptSensor(ExecutableBundleFactory executableBundleFactory, NoSonarFilter noSonarFilter, FileLinesContextFactory fileLinesContextFactory,
-    CheckFactory checkFactory) {
+  public ExternalTypescriptSensor(
+    ExecutableBundleFactory executableBundleFactory, NoSonarFilter noSonarFilter, FileLinesContextFactory fileLinesContextFactory,
+    CheckFactory checkFactory
+  ) {
     this.executableBundleFactory = executableBundleFactory;
     this.noSonarFilter = noSonarFilter;
     this.fileLinesContextFactory = fileLinesContextFactory;
@@ -86,32 +92,71 @@ public class ExternalTypescriptSensor implements Sensor {
     File deployDestination = sensorContext.fileSystem().workDir();
     ExecutableBundle executableBundle = executableBundleFactory.createAndDeploy(deployDestination);
 
-    File projectBaseDir = sensorContext.fileSystem().baseDir();
-    LOG.info("Metrics calculation");
-    runMetrics(sensorContext, executableBundle);
-    TypeScriptRules typeScriptRules = new TypeScriptRules(checkFactory);
-    executableBundle.activateRules(typeScriptRules);
-    LOG.info("Rules execution");
-    Failure[] failures = runRules(executableBundle, projectBaseDir);
-    saveFailures(sensorContext, failures, typeScriptRules);
-  }
-
-  private static Failure[] runRules(ExecutableBundle executableBundle, File projectBaseDir) {
-    Command command = executableBundle.getTslintCommand(projectBaseDir);
-    String rulesOutput = executeCommand(command);
-    return new Gson().fromJson(rulesOutput, Failure[].class);
-  }
-
-  private void runMetrics(SensorContext sensorContext, ExecutableBundle executableBundle) {
     FileSystem fileSystem = sensorContext.fileSystem();
-
     FilePredicate mainFilePredicate = sensorContext.fileSystem().predicates().and(
       fileSystem.predicates().hasType(InputFile.Type.MAIN),
       fileSystem.predicates().hasLanguage(TypeScriptLanguage.KEY));
+    Iterable<InputFile> inputFiles = fileSystem.inputFiles(mainFilePredicate);
 
-    TsMetricsPerFileResponse[] tsMetricsPerFileResponses = runMetricsProcess(executableBundle, fileSystem.inputFiles(mainFilePredicate));
+    LOG.info("Metrics calculation");
+    runMetrics(inputFiles, sensorContext, executableBundle);
+
+
+    LOG.info("Rules execution");
+    TypeScriptRules typeScriptRules = new TypeScriptRules(checkFactory);
+    executableBundle.activateRules(typeScriptRules);
+    runRules(inputFiles, executableBundle, sensorContext, typeScriptRules);
+
+  }
+
+  private void runRules(Iterable<InputFile> inputFiles, ExecutableBundle executableBundle, SensorContext sensorContext, TypeScriptRules typeScriptRules) {
+    File projectBaseDir = sensorContext.fileSystem().baseDir();
+
+    Multimap<String, InputFile> inputFileByTsconfig = getInputFileByTsconfig(inputFiles, projectBaseDir);
+
+    for (String tsconfigPath : inputFileByTsconfig.keySet()) {
+      Collection<InputFile> inputFilesForThisConfig = inputFileByTsconfig.get(tsconfigPath);
+
+      Command command = executableBundle.getTslintCommand(tsconfigPath, inputFilesForThisConfig);
+      String rulesOutput = executeCommand(command);
+      Failure[] failures = new Gson().fromJson(rulesOutput, Failure[].class);
+      saveFailures(sensorContext, failures, typeScriptRules);
+    }
+  }
+
+  private static Multimap<String, InputFile> getInputFileByTsconfig(Iterable<InputFile> inputFiles, File projectBaseDir) {
+    Multimap<String, InputFile> inputFileByTsconfig = ArrayListMultimap.create();
+
+    for (InputFile inputFile : inputFiles) {
+      File tsConfig = findTsConfig(inputFile, projectBaseDir);
+      if (tsConfig == null) {
+        LOG.error("No tsconfig.json file found for " + inputFile.absolutePath() + " (looking up the directories tree). This file will not be analyzed.");
+      } else {
+        inputFileByTsconfig.put(tsConfig.getAbsolutePath(), inputFile);
+      }
+    }
+    return inputFileByTsconfig;
+  }
+
+  @Nullable
+  private static File findTsConfig(InputFile inputFile, File projectBaseDir) {
+    File currentDirectory = inputFile.file();
+    do {
+      currentDirectory = currentDirectory.getParentFile();
+      File tsconfig = new File(currentDirectory, "tsconfig.json");
+      if (tsconfig.exists()) {
+        return tsconfig;
+      }
+    } while (!currentDirectory.getAbsolutePath().equals(projectBaseDir.getAbsolutePath()));
+    return null;
+  }
+
+  private void runMetrics(Iterable<InputFile> inputFiles, SensorContext sensorContext, ExecutableBundle executableBundle) {
+
+    TsMetricsPerFileResponse[] tsMetricsPerFileResponses = runMetricsProcess(executableBundle, inputFiles);
 
     for (TsMetricsPerFileResponse tsMetricsPerFileResponse : tsMetricsPerFileResponses) {
+      FileSystem fileSystem = sensorContext.fileSystem();
       InputFile inputFile = fileSystem.inputFile(fileSystem.predicates().hasAbsolutePath(tsMetricsPerFileResponse.filepath));
       if (inputFile != null) {
         saveHighlights(sensorContext, tsMetricsPerFileResponse.highlights, inputFile);
@@ -201,16 +246,17 @@ public class ExternalTypescriptSensor implements Sensor {
   }
 
   private static String executeCommand(Command command) {
+
+    CommandExecutor commandExecutor = CommandExecutor.create();
+    StringStreamConsumer stdOut = new StringStreamConsumer();
+    StringStreamConsumer stdErr = new StringStreamConsumer();
     try {
-      CommandExecutor commandExecutor = CommandExecutor.create();
-      StringStreamConsumer stdOut = new StringStreamConsumer();
-      StringStreamConsumer stdErr = new StringStreamConsumer();
       commandExecutor.execute(command, stdOut, stdErr, 600_000);
-      if (!stdErr.getOutput().isEmpty()) {
-        throw new IllegalStateException(stdErr.getOutput());
-      }
       return stdOut.getOutput();
     } catch (Exception e) {
+      if (!stdErr.getOutput().isEmpty()) {
+        LOG.error("TSLint failed with " + stdErr.getOutput());
+      }
       throw new IllegalStateException(failedMessage(command.toCommandLine()), e);
     }
   }

@@ -26,11 +26,13 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.utils.command.Command;
 import org.sonar.plugin.typescript.rules.TypeScriptRules;
 
@@ -82,18 +84,23 @@ public class SonarTSCoreBundle implements ExecutableBundle {
    * Builds command to run tslint
    */
   @Override
-  public Command getTslintCommand(File projectBaseDir) {
+  public Command getTslintCommand(String tsconfigPath, Collection<InputFile> inputFiles) {
     File sonartsCoreDir = new File(deployDestination, "sonarts-core");
 
     Command command = Command.create("node");
     command.addArgument(tslintExecutable.getAbsolutePath());
     command.addArgument("--config").addArgument(new File(sonartsCoreDir, "tslint.json").getAbsolutePath());
     command.addArgument("--format").addArgument("json");
+    // "--force" parameter will force execution of the rules even in case of compilation error
+    command.addArgument("--force");
 
-    // (Lena) It might be that "tsconfig.json" location should be configurable
     command.addArgument("--type-check")
       .addArgument("--project")
-      .addArgument(new File(projectBaseDir, "tsconfig.json").getAbsolutePath());
+      .addArgument(tsconfigPath);
+
+    for (InputFile inputFile : inputFiles) {
+      command.addArgument(inputFile.absolutePath());
+    }
 
     return command;
   }
