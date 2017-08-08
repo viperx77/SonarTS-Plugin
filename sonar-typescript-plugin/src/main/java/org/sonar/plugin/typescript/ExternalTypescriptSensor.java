@@ -19,20 +19,25 @@
  */
 package org.sonar.plugin.typescript;
 
+import com.google.common.base.Charsets;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import javax.annotation.Nullable;
+import org.apache.commons.io.IOUtils;
 import org.sonar.api.batch.fs.FilePredicate;
 import org.sonar.api.batch.fs.FileSystem;
 import org.sonar.api.batch.fs.InputFile;
@@ -52,8 +57,6 @@ import org.sonar.api.measures.FileLinesContextFactory;
 import org.sonar.api.measures.Metric;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.utils.command.Command;
-import org.sonar.api.utils.command.CommandExecutor;
-import org.sonar.api.utils.command.StringStreamConsumer;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonar.plugin.typescript.executable.ExecutableBundle;
@@ -105,11 +108,11 @@ public class ExternalTypescriptSensor implements Sensor {
     LOG.info("Rules execution");
     TypeScriptRules typeScriptRules = new TypeScriptRules(checkFactory);
     executableBundle.activateRules(typeScriptRules);
-    runRules(inputFiles, executableBundle, sensorContext, typeScriptRules);
+    runRules(inputFiles, executableBundle, sensorContext, typeScriptRules, deployDestination);
 
   }
 
-  private void runRules(Iterable<InputFile> inputFiles, ExecutableBundle executableBundle, SensorContext sensorContext, TypeScriptRules typeScriptRules) {
+  private void runRules(Iterable<InputFile> inputFiles, ExecutableBundle executableBundle, SensorContext sensorContext, TypeScriptRules typeScriptRules, File deployDestination) {
     File projectBaseDir = sensorContext.fileSystem().baseDir();
 
     Multimap<String, InputFile> inputFileByTsconfig = getInputFileByTsconfig(inputFiles, projectBaseDir);
@@ -118,8 +121,7 @@ public class ExternalTypescriptSensor implements Sensor {
       Collection<InputFile> inputFilesForThisConfig = inputFileByTsconfig.get(tsconfigPath);
 
       Command command = executableBundle.getTslintCommand(tsconfigPath, inputFilesForThisConfig);
-      String rulesOutput = executeCommand(command);
-      Failure[] failures = new Gson().fromJson(rulesOutput, Failure[].class);
+      Failure[] failures = runRulesProcess(command, deployDestination);
       saveFailures(sensorContext, failures, typeScriptRules);
     }
   }
@@ -173,10 +175,6 @@ public class ExternalTypescriptSensor implements Sensor {
     Command sonarCommand = executableBundle.getTsMetricsCommand();
     List<String> commandComponents = decomposeToComponents(sonarCommand);
     ProcessBuilder processBuilder = new ProcessBuilder(commandComponents);
-    processBuilder.redirectOutput(ProcessBuilder.Redirect.PIPE);
-    // TODO map to analysisError
-    processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);
-    processBuilder.redirectInput(ProcessBuilder.Redirect.PIPE);
 
     InputStreamReader inputStreamReader;
     try {
@@ -197,6 +195,36 @@ public class ExternalTypescriptSensor implements Sensor {
     }
 
     return new Gson().fromJson(inputStreamReader, TsMetricsPerFileResponse[].class);
+
+  }
+
+  private static Failure[] runRulesProcess(Command ruleCommand, File tmpDir) {
+    List<String> commandComponents = decomposeToComponents(ruleCommand);
+    ProcessBuilder processBuilder = new ProcessBuilder(commandComponents);
+
+    try {
+      File outFile = new File(tmpDir, "sonartsRules.out");
+      processBuilder.redirectOutput(outFile);
+      Process process = processBuilder.start();
+      process.waitFor();
+
+      Failure[] failures = new Gson().fromJson(new InputStreamReader(new FileInputStream(outFile), Charsets.UTF_8), Failure[].class);
+
+      if (failures == null) {
+        // output is empty if some problem happened during linting
+        InputStream errorStream = process.getErrorStream();
+        String errors = IOUtils.toString(errorStream, Charset.defaultCharset());
+        LOG.error("TSLint failed");
+        if (!errors.isEmpty()) {
+          LOG.error(errors);
+        }
+        return new Failure[0];
+      }
+      return failures;
+
+    } catch (Exception e) {
+      throw new IllegalStateException(String.format("Failed to run external process `%s`", String.join(" ", commandComponents)), e);
+    }
 
   }
 
@@ -245,36 +273,7 @@ public class ExternalTypescriptSensor implements Sensor {
     return commandComponents;
   }
 
-  private static String executeCommand(Command command) {
-
-    CommandExecutor commandExecutor = CommandExecutor.create();
-    StringStreamConsumer stdOut = new StringStreamConsumer();
-    StringStreamConsumer stdErr = new StringStreamConsumer();
-    try {
-      commandExecutor.execute(command, stdOut, stdErr, 600_000);
-      String output = stdOut.getOutput();
-      if (output.trim().isEmpty()) {
-        // output is empty if some problem happened during linting
-        LOG.error("TSLint failed with " + stdErr.getOutput());
-        // return output for 0 issues
-        return "[]";
-      }
-      return output;
-
-    } catch (Exception e) {
-      if (!stdErr.getOutput().isEmpty()) {
-        LOG.error("TSLint failed with " + stdErr.getOutput());
-      }
-      throw new IllegalStateException(failedMessage(command.toCommandLine()), e);
-    }
-  }
-
-  private static String failedMessage(String command) {
-    return String.format("Failed to run external process `%s`", command);
-  }
-
   private void saveFailures(SensorContext sensorContext, Failure[] failures, TypeScriptRules typeScriptRules) {
-    LOG.debug("Typescript analysis raised " + failures.length + " issues");
     FileSystem fs = sensorContext.fileSystem();
     for (Failure failure : failures) {
       InputFile inputFile = fs.inputFile(fs.predicates().hasAbsolutePath(failure.name));

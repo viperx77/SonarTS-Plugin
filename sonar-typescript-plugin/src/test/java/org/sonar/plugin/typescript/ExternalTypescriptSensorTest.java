@@ -31,6 +31,7 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.junit.rules.TemporaryFolder;
 import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.batch.fs.InputFile.Type;
 import org.sonar.api.batch.fs.internal.DefaultInputFile;
@@ -70,6 +71,9 @@ public class ExternalTypescriptSensorTest {
 
   @Rule
   public final ExpectedException thrown = ExpectedException.none();
+
+  @Rule
+  public TemporaryFolder tmpDir = new TemporaryFolder();
 
   @Rule
   public final LogTester logTester = new LogTester();
@@ -139,6 +143,21 @@ public class ExternalTypescriptSensorTest {
   }
 
   @Test
+  public void should_log_when_empty_tslint_out() throws Exception {
+    SensorContextTester sensorContext = createSensorContext();
+    DefaultInputFile testInputFile = createTestInputFile(sensorContext);
+
+    ExternalTypescriptSensor sensor = createSensor(new TestBundleFactory().tsMetrics(node, resourceScript("/mockTsMetrics.js"), testInputFile.absolutePath())
+      .tslint(node, resourceScript("/mockEmptyTsLint.js"), testInputFile.absolutePath()));
+
+    sensor.execute(sensorContext);
+
+    assertThat(sensorContext.allIssues()).hasSize(0);
+    assertThat(logTester.logs()).contains("TSLint failed");
+    assertThat(logTester.logs().get(logTester.logs().size() - 1)).contains("Some error message");
+  }
+
+  @Test
   public void should_find_tsconfig_in_directory_above() throws Exception {
     SensorContextTester sensorContext = createSensorContext();
     DefaultInputFile testInputFile = createTestInputFile(sensorContext, "foo/bar/file.ts");
@@ -200,18 +219,18 @@ public class ExternalTypescriptSensorTest {
     assertThat(sensorContext.allIssues()).hasSize(0);
   }
 
-//  @Test
-//  public void should_not_fail_when_stdErr_tslint_is_not_empty() throws Exception {
-//    TestBundleFactory testBundle = new TestBundleFactory().tslint("cat", "not_existing_file").tsMetrics(node, resourceScript("/mockTsMetrics.js"), "some/path/file.ts");
-//    SensorContextTester sensorContext = createSensorContext();
-//    createSensor(testBundle).execute(sensorContext);
-//
-//    assertThat(sensorContext.allIssues()).hasSize(0);
-//  }
+  @Test
+  public void should_not_fail_when_stdErr_tslint_is_not_empty() throws Exception {
+    TestBundleFactory testBundle = new TestBundleFactory().tslint("cat", "not_existing_file").tsMetrics(node, resourceScript("/mockTsMetrics.js"), "some/path/file.ts");
+    SensorContextTester sensorContext = createSensorContext();
+    createSensor(testBundle).execute(sensorContext);
+
+    assertThat(sensorContext.allIssues()).hasSize(0);
+  }
 
   private SensorContextTester createSensorContext() {
     SensorContextTester sensorContext = SensorContextTester.create(BASE_DIR);
-    sensorContext.fileSystem().setWorkDir(new File(".")); // useless in this test since TestBundle does not really deploy anything
+    sensorContext.fileSystem().setWorkDir(tmpDir.getRoot());
     return sensorContext;
   }
 
