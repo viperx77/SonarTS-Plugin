@@ -252,7 +252,15 @@ public class ExternalTypescriptSensor implements Sensor {
     StringStreamConsumer stdErr = new StringStreamConsumer();
     try {
       commandExecutor.execute(command, stdOut, stdErr, 600_000);
-      return stdOut.getOutput();
+      String output = stdOut.getOutput();
+      if (output.trim().isEmpty()) {
+        // output is empty if some problem happened during linting
+        LOG.error("TSLint failed with " + stdErr.getOutput());
+        // return output for 0 issues
+        return "[]";
+      }
+      return output;
+
     } catch (Exception e) {
       if (!stdErr.getOutput().isEmpty()) {
         LOG.error("TSLint failed with " + stdErr.getOutput());
