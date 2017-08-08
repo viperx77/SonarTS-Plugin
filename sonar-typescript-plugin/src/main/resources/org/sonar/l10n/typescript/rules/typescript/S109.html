@@ -4,4 +4,21 @@ number of iterations of a loops, to test the value of a property, etc.</p>
 debugging time.</p>
 <p>That is why magic numbers must be demystified by first being assigned to clearly named variables before being used.</p>
 <p>-1, 0 and 1 are not considered magic numbers.</p>
+<h2>Noncompliant Code Example</h2>
+<pre>
+function doSomething() {
+  for (let i = 0; i &lt; 4; i++) {    // Noncompliant, 4 is a magic number
+    // ...
+  }
+}
+</pre>
+<h2>Compliant Solution</h2>
+<pre>
+function doSomething() {
+  const numberOfCycles = 4;
+  for (let i = 0; i &lt; numberOfCycles; i++) {
+    // ...
+  }
+}
+</pre>
 

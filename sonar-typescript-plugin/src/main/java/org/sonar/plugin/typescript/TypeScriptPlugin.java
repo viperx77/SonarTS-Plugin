@@ -43,6 +43,7 @@ public class TypeScriptPlugin implements Plugin {
       TypeScriptLanguage.class,
       ExternalTypescriptSensor.class,
       SonarWayProfile.class,
+      SonarWayRecommendedProfile.class,
       TypeScriptRulesDefinition.class,
       LCOVCoverageSensor.class,
       PropertyDefinition.builder(FILE_SUFFIXES_KEY)
