@@ -122,6 +122,7 @@ public class TypeScriptRules implements Iterable<TypeScriptRule> {
       .add(NoArrayDelete.class)
       .add(NoCollectionSizeMischeck.class)
       .add(NoConstruct.class)
+      .add(NoDeadStore.class)
       .add(NoDebugger.class)
       .add(NoDuplicateSuper.class)
       .add(NoDuplicateVariable.class)
