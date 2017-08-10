@@ -23,6 +23,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
+import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -47,6 +48,8 @@ import org.sonarsource.analyzer.commons.RuleMetadataLoader;
  * </ul>
  */
 public class TypeScriptRules implements Iterable<TypeScriptRule> {
+
+  public static final Set<String> FILE_LEVEL_RULES = ImmutableSet.of("S113", "S104");
 
   private static final String RESOURCE_FOLDER = "org/sonar/l10n/typescript/rules/typescript";
 

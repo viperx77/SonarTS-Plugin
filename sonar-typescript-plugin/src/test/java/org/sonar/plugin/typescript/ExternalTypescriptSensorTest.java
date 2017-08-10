@@ -40,6 +40,7 @@ import org.sonar.api.batch.rule.CheckFactory;
 import org.sonar.api.batch.sensor.highlighting.TypeOfText;
 import org.sonar.api.batch.sensor.internal.DefaultSensorDescriptor;
 import org.sonar.api.batch.sensor.internal.SensorContextTester;
+import org.sonar.api.batch.sensor.issue.Issue;
 import org.sonar.api.issue.NoSonarFilter;
 import org.sonar.api.measures.CoreMetrics;
 import org.sonar.api.measures.FileLinesContext;
@@ -140,6 +141,21 @@ public class ExternalTypescriptSensorTest {
     assertThat(cpd).hasSize(1);
     assertThat(cpd.get(0).getStartLine()).isEqualTo(2);
     assertThat(cpd.get(0).getValue()).isEqualTo("foobar");
+  }
+
+  @Test
+  public void should_create_file_level_issues() throws Exception {
+    SensorContextTester sensorContext = createSensorContext();
+    DefaultInputFile testInputFile = createTestInputFile(sensorContext);
+
+    ExternalTypescriptSensor sensor = createSensor(new TestBundleFactory().tsMetrics(node, resourceScript("/mockTsMetrics.js"), testInputFile.absolutePath())
+      .tslint(node, resourceScript("/mockTsLintFileLevel.js"), testInputFile.absolutePath()));
+
+    sensor.execute(sensorContext);
+
+    assertThat(sensorContext.allIssues()).hasSize(1);
+    Issue issue = sensorContext.allIssues().iterator().next();
+    assertThat(issue.primaryLocation().textRange()).isNull();
   }
 
   @Test
@@ -244,7 +260,7 @@ public class ExternalTypescriptSensorTest {
     when(fileLinesContextFactory.createFor(any(InputFile.class))).thenReturn(fileLinesContext);
 
     noSonarFilter = mock(NoSonarFilter.class);
-    CheckFactory checkFactory = new CheckFactory(new TestActiveRules("S1751"));
+    CheckFactory checkFactory = new CheckFactory(new TestActiveRules("S1751", "S113"));
     return new ExternalTypescriptSensor(executableBundleFactory, noSonarFilter, fileLinesContextFactory, checkFactory);
   }
 

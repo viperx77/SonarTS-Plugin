@@ -283,7 +283,14 @@ public class ExternalTypescriptSensor implements Sensor {
         NewIssueLocation location = issue.newLocation();
         location.on(inputFile);
         location.message(failure.failure);
-        location.at(inputFile.newRange(failure.startPosition.line + 1, failure.startPosition.character, failure.endPosition.line + 1, failure.endPosition.character));
+
+        if (!TypeScriptRules.FILE_LEVEL_RULES.contains(ruleKey.rule())) {
+          location.at(inputFile.newRange(
+            failure.startPosition.line + 1,
+            failure.startPosition.character,
+            failure.endPosition.line + 1,
+            failure.endPosition.character));
+        }
         issue.at(location);
         issue.save();
       }
