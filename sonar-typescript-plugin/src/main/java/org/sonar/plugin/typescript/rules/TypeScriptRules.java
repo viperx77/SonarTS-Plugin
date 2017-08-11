@@ -49,7 +49,7 @@ import org.sonarsource.analyzer.commons.RuleMetadataLoader;
  */
 public class TypeScriptRules implements Iterable<TypeScriptRule> {
 
-  public static final Set<String> FILE_LEVEL_RULES = ImmutableSet.of("S113", "S104");
+  public static final Set<String> FILE_LEVEL_RULES = ImmutableSet.of("S113", "S104", "S1451");
 
   private static final String RESOURCE_FOLDER = "org/sonar/l10n/typescript/rules/typescript";
 
@@ -116,14 +116,18 @@ public class TypeScriptRules implements Iterable<TypeScriptRule> {
       .add(CyclomaticComplexity.class)
       .add(Deprecation.class)
       .add(Eofline.class)
+      .add(FileHeader.class)
+      .add(Indent.class)
       .add(LabelPosition.class)
       .add(MaxFileLineCount.class)
       .add(MaxLineLength.class)
       .add(NoAllDuplicatedBranches.class)
       .add(NoAngleBracketTypeAssertion.class)
+      .add(NoAny.class)
       .add(NoArg.class)
       .add(NoArrayDelete.class)
       .add(NoCollectionSizeMischeck.class)
+      .add(NoConsole.class)
       .add(NoConstruct.class)
       .add(NoDeadStore.class)
       .add(NoDebugger.class)
@@ -165,11 +169,13 @@ public class TypeScriptRules implements Iterable<TypeScriptRule> {
       .add(PreferForOf.class)
       .add(PreferTemplate.class)
       .add(RestrictPlusOperands.class)
+      .add(Semicolon.class)
       .add(TripleEquals.class)
       .add(TypeofCompare.class)
       .add(VariableName.class)
       .add(UseIsnan.class)
       .add(UseDefaultTypeParameter.class)
+      .add(Quotemark.class)
       .build();
   }
 

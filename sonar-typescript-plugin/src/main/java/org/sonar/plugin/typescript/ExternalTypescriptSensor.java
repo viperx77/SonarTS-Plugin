@@ -284,13 +284,18 @@ public class ExternalTypescriptSensor implements Sensor {
         location.on(inputFile);
         location.message(failure.failure);
 
-        if (!TypeScriptRules.FILE_LEVEL_RULES.contains(ruleKey.rule())) {
+        // semicolon rule
+        if (ruleKey.rule().equals("S1438")) {
+          location.at(inputFile.selectLine(failure.startPosition.line + 1));
+
+        } else if (!TypeScriptRules.FILE_LEVEL_RULES.contains(ruleKey.rule())) {
           location.at(inputFile.newRange(
             failure.startPosition.line + 1,
             failure.startPosition.character,
             failure.endPosition.line + 1,
             failure.endPosition.character));
         }
+
         issue.at(location);
         issue.save();
       }
