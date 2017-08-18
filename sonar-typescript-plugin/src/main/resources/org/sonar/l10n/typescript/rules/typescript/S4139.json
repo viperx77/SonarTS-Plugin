@@ -1,6 +1,6 @@
 {
   "title": "\"for in\" should not be used with iterables",
-  "type": "BUG",
+  "type": "CODE_SMELL",
   "status": "ready",
   "remediation": {
     "func": "Constant\/Issue",
