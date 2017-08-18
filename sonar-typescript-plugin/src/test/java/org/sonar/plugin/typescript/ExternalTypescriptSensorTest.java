@@ -169,8 +169,8 @@ public class ExternalTypescriptSensorTest {
     sensor.execute(sensorContext);
 
     assertThat(sensorContext.allIssues()).hasSize(0);
-    assertThat(logTester.logs()).contains("TSLint failed");
-    assertThat(logTester.logs().get(logTester.logs().size() - 1)).contains("Some error message");
+    assertThat(logTester.logs().get(4)).contains("empty output");
+    assertThat(logTester.logs().get(logTester.logs().size() - 1)).contains("foo/file.ts");
   }
 
   @Test
@@ -208,7 +208,18 @@ public class ExternalTypescriptSensorTest {
     SensorContextTester sensorContext = createSensorContext();
     createSensor(testBundle).execute(sensorContext);
 
-    assertThat(logTester.logs()).contains("Failed to run external process `non_existent_command arg1`");
+    assertThat(logTester.logs()).contains("Failed to run external process `non_existent_command arg1`. As a result, NO METRICS WERE GENERATED, run with -X for more information");
+  }
+
+
+  @Test
+  public void should_log_when_empty_metrics_process_output() throws Exception {
+    TestBundleFactory testBundle = new TestBundleFactory().tsMetrics(node, "-e", "console.log('');").tslint(node, "-e", "console.log('[]');");
+    SensorContextTester sensorContext = createSensorContext();
+    createSensor(testBundle).execute(sensorContext);
+
+    assertThat(logTester.logs()).contains("External process `" + node
+      + " -e console.log('');` returned an empty response. As a result, NO METRICS WERE GENERATED, run with -X for more information");
   }
 
   @Test

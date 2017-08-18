@@ -34,9 +34,13 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.utils.command.Command;
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.Loggers;
 import org.sonar.plugin.typescript.rules.TypeScriptRules;
 
 public class SonarTSCoreBundle implements ExecutableBundle {
+
+  private static final Logger LOG = Loggers.get(SonarTSCoreBundle.class);
 
   // relative location inside sonarts-core bundle
   private static final String TSLINT_LOCATION = "node_modules/tslint/bin/tslint";
@@ -59,6 +63,7 @@ public class SonarTSCoreBundle implements ExecutableBundle {
   }
 
   static SonarTSCoreBundle createAndDeploy(String bundleLocation, File deployDestination) {
+    LOG.debug(String.format("Deploying bundle from `%s` to `%s`", bundleLocation, deployDestination.getAbsolutePath()));
     SonarTSCoreBundle sonarTSCoreBundle = new SonarTSCoreBundle(bundleLocation, deployDestination);
     sonarTSCoreBundle.deploy();
 
