@@ -15,6 +15,7 @@
   <packaging>pom</packaging>
 
   <name>SonarTS</name>
+  <url>http://redirect.sonarsource.com/plugins/typescript.html</url>
   <description>SonarQube TypeScript Analyzer</description>
   <inceptionYear>2017</inceptionYear>
   <organization>
